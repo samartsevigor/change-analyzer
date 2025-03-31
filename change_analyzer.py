@@ -205,12 +205,15 @@ def analyze_changes(base_commit: str, head_commit: str, project_root: str = ".")
 
 if __name__ == "__main__":
     import sys
-    if len(sys.argv) != 3:
-        print("Usage: python change_analyzer.py <base_commit> <head_commit>")
+    if len(sys.argv) < 3:
+        print("Usage: python change_analyzer.py <base_commit> <head_commit> [project_path]")
         sys.exit(1)
     
     base_commit, head_commit = sys.argv[1], sys.argv[2]
-    result = analyze_changes(base_commit, head_commit)
+    project_path = sys.argv[3] if len(sys.argv) > 3 else "."
+    
+    print(f"Analyzing changes between {base_commit} and {head_commit} in {project_path}")
+    result = analyze_changes(base_commit, head_commit, project_path)
     
     with open("changed_declarations.json", "w") as f:
         json.dump(result, f, indent=2)

@@ -10,6 +10,10 @@ inputs:
   head_commit:
     description: 'Head commit SHA for comparison'
     required: true
+  github_token:
+    description: 'GitHub token for repository access'
+    required: false
+    default: ${{ github.token }}
 outputs:
   changes_file:
     description: 'Path to the JSON file with analyzed changes'
