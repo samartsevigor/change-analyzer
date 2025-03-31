@@ -12,7 +12,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Analyze Solidity Changes
-        uses: samartsevigor/change-analyzer@v1
+        uses: samartsevigor/change-analyzer@v1.0.2
         with:
           base_commit: ${{ github.event.pull_request.base.sha }}
           head_commit: ${{ github.event.pull_request.head.sha }}
