@@ -11,18 +11,20 @@ SOLIDITY_LANGUAGE = tree_sitter.Language(tree_sitter_solidity.language(), "solid
 PARSER = tree_sitter.Parser()
 PARSER.set_language(SOLIDITY_LANGUAGE)
 
-def read_ignore_patterns(project_root: Path) -> pathspec.PathSpec:
+def read_ignore_patterns(project_root: Path, scopeignore_path: str = ".scopeignore") -> pathspec.PathSpec:
     """Reads ignore patterns from .scopeignore and adds default ones."""
     default_patterns = ["node_modules/", "[Tt]ests/", "[Tt]est/", "[Mm]ocks/", "[Mm]ock/", "[Ii]nterfaces/", "[Ii]nterface/", "*[Ii]nterface.sol"]
-    ignore_file = project_root / ".scopeignore"
+    ignore_file = project_root / scopeignore_path
     patterns = []
     
     if ignore_file.exists():
         patterns.extend(["node_modules/"])
         with ignore_file.open("r") as f:
             patterns.extend(line.strip() for line in f if line.strip() and not line.startswith("#"))
+        print(f"Using custom ignore patterns from {scopeignore_path}")
     else:
         patterns = default_patterns.copy()
+        print(f"Using default ignore patterns (no {scopeignore_path} found)")
     
     print(f"Ignore patterns: {patterns}")
     return pathspec.PathSpec.from_lines("gitwildmatch", patterns)
@@ -148,10 +150,10 @@ def extract_declarations(source_bytes: bytes) -> List[Dict]:
     print(f"Extracted declarations: {declarations}")
     return declarations
 
-def analyze_changes(base_commit: str, head_commit: str, project_root: str = ".") -> List[Dict]:
+def analyze_changes(base_commit: str, head_commit: str, project_root: str = ".", scopeignore_path: str = ".scopeignore") -> List[Dict]:
     """Analyzes changes between commits and returns a list of change objects."""
     project_root = Path(project_root).resolve()
-    ignore_spec = read_ignore_patterns(project_root)
+    ignore_spec = read_ignore_patterns(project_root, scopeignore_path)
     changed_files = get_changed_files(base_commit, head_commit, project_root)
     
     result = []
@@ -206,14 +208,16 @@ def analyze_changes(base_commit: str, head_commit: str, project_root: str = ".")
 if __name__ == "__main__":
     import sys
     if len(sys.argv) < 3:
-        print("Usage: python change_analyzer.py <base_commit> <head_commit> [project_path]")
+        print("Usage: python change_analyzer.py <base_commit> <head_commit> [project_path] [scopeignore_path]")
         sys.exit(1)
     
     base_commit, head_commit = sys.argv[1], sys.argv[2]
     project_path = sys.argv[3] if len(sys.argv) > 3 else "."
+    scopeignore_path = sys.argv[4] if len(sys.argv) > 4 else ".scopeignore"
     
     print(f"Analyzing changes between {base_commit} and {head_commit} in {project_path}")
-    result = analyze_changes(base_commit, head_commit, project_path)
+    print(f"Using scopeignore from: {scopeignore_path}")
+    result = analyze_changes(base_commit, head_commit, project_path, scopeignore_path)
     
     with open("changed_declarations.json", "w") as f:
         json.dump(result, f, indent=2)

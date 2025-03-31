@@ -13,11 +13,12 @@ jobs:
         with:
           fetch-depth: 0
       - name: Analyze Solidity Changes
-        uses: samartsevigor/change-analyzer@v1.0.3
+        uses: samartsevigor/change-analyzer@v1.0.4
         with:
           base_commit: ${{ github.event.pull_request.base.sha }}
           head_commit: ${{ github.event.pull_request.head.sha }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          scopeignore_path: '.scopeignore'  # Default path, can be customized
       - name: Upload Results
         uses: actions/upload-artifact@v4
         with:
