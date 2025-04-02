@@ -1,6 +1,6 @@
 name: Smart Contract Change Analyzer
 on:
-  Manual trigger with inputs
+  # Manual trigger with inputs
   workflow_dispatch:
     inputs:
       base_commit:
