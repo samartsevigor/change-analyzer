@@ -42,8 +42,8 @@ jobs:
         uses: samartsevigor/change-analyzer@v1.1.1
         with:
           # For manual trigger, use the provided inputs
-          base_commit: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.base_commit || github.event.pull_request.base.sha }}
-          head_commit: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.head_commit || github.event.pull_request.head.sha }}
+          base_commit: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.base_commit || github.event_name == 'push' && github.event.before || github.event.pull_request.base.sha }}
+          head_commit: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.head_commit || github.event_name == 'push' && github.sha || github.event.pull_request.head.sha }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           scopeignore_path: '.scopeignore'  # Optional, defaults to '.scopeignore'
           
