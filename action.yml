@@ -1,4 +1,4 @@
-name: 'Solidity Change Analyzer'
+name: 'Smart Contract Change Analyzer'
 description: 'Analyzes changes in Solidity contracts between commits'
 branding:
   icon: 'search'

@@ -1,4 +1,4 @@
-name: Solidity Change Analyzer
+name: Smart Contract Change Analyzer
 on:
   # Manual trigger with inputs
   workflow_dispatch:

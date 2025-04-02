@@ -1,4 +1,4 @@
-# Solidity Change Analyzer
+# Smart Contract Change Analyzer
 
 This GitHub Action analyzes Solidity smart contract changes between commits to identify which contracts and methods have been modified. It helps in tracking the scope of changes for security reviews and audits.
 
@@ -16,7 +16,7 @@ Add this GitHub Action to your workflow to analyze changes in Solidity files. Yo
 ### Manual Trigger Example
 
 ```yaml
-name: Solidity Change Analyzer
+name: Smart Contract Change Analyzer
 on:
   # Manual trigger with inputs
   workflow_dispatch:
@@ -60,7 +60,7 @@ To run the analysis manually:
 
 1. Go to your repository on GitHub
 2. Navigate to the "Actions" tab
-3. Select the "Solidity Change Analyzer" workflow from the left sidebar
+3. Select the "Smart Contract Change Analyzer" workflow from the left sidebar
 4. Click the "Run workflow" button
 5. Enter the base commit SHA and head commit SHA
 6. Click "Run workflow"
