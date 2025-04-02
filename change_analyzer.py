@@ -141,6 +141,62 @@ def extract_contracts(tree: tree_sitter.Tree, source_bytes: bytes) -> List[Dict]
     
     return declarations
 
+def remove_comments_and_normalize(text: str) -> str:
+    """Removes comments and normalizes whitespace in Solidity code."""
+    lines = text.split("\n")
+    result = []
+    in_multiline_comment = False
+    
+    for line in lines:
+        processed_line = ""
+        i = 0
+        while i < len(line):
+            # If we're inside a multiline comment, look for its end
+            if in_multiline_comment:
+                end_index = line.find("*/", i)
+                if end_index != -1:
+                    # Found end of comment
+                    in_multiline_comment = False
+                    i = end_index + 2  # Skip */
+                else:
+                    # Comment continues to end of line
+                    i = len(line)
+            else:
+                # Check for start of single-line comment
+                single_comment_index = line.find("//", i)
+                # Check for start of multi-line comment
+                multi_comment_index = line.find("/*", i)
+                
+                # Determine which comes first
+                if single_comment_index != -1 and (multi_comment_index == -1 or single_comment_index < multi_comment_index):
+                    # Single-line comment
+                    processed_line += line[i:single_comment_index]
+                    break  # Rest of line is comment
+                elif multi_comment_index != -1:
+                    # Multi-line comment
+                    processed_line += line[i:multi_comment_index]
+                    in_multiline_comment = True
+                    i = multi_comment_index + 2  # Skip /*
+                    
+                    # Check if the multi-line comment ends on the same line
+                    end_index = line.find("*/", i)
+                    if end_index != -1:
+                        in_multiline_comment = False
+                        i = end_index + 2  # Skip */
+                    else:
+                        # Comment continues to end of line
+                        i = len(line)
+                else:
+                    # No comments in the rest of the line
+                    processed_line += line[i:]
+                    break
+        
+        # Add the processed line if it's not empty
+        if processed_line.strip():
+            result.append(processed_line.strip())
+    
+    return " ".join(result)
+
 def compare_methods(old_method: Dict, new_method: Dict) -> bool:
     """Compares two methods to determine if they are functionally different."""
     # Normalize whitespace and comments
@@ -153,30 +209,6 @@ def compare_methods(old_method: Dict, new_method: Dict) -> bool:
     
     # Compare normalized texts
     return old_text != new_text
-
-def remove_comments_and_normalize(text: str) -> str:
-    """Removes comments and normalizes whitespace in Solidity code."""
-    # This is a simplified version - in a real implementation,
-    # you would use a proper Solidity parser to handle all comment types
-    lines = text.split("\n")
-    result = []
-    
-    for line in lines:
-        # Skip comment lines
-        if line.strip().startswith("//") or line.strip().startswith("/*") or line.strip().startswith("*"):
-            continue
-        
-        # Remove inline comments
-        if "//" in line:
-            line = line.split("//")[0]
-        if "/*" in line:
-            line = line.split("/*")[0]
-        
-        # Add non-empty lines
-        if line.strip():
-            result.append(line.strip())
-    
-    return " ".join(result)
 
 def find_changed_methods(base_tree: tree_sitter.Tree, head_tree: tree_sitter.Tree, 
                          base_content: bytes, head_content: bytes) -> List[Dict]:
