@@ -39,7 +39,7 @@ jobs:
           fetch-depth: 0
           
       - name: Analyze Solidity Changes
-        uses: samartsevigor/change-analyzer@v1.0.4
+        uses: samartsevigor/change-analyzer@v1.0.5
         with:
           # For manual trigger, use the provided inputs
           base_commit: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.base_commit || github.event.pull_request.base.sha }}
