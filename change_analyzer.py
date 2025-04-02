@@ -1,10 +1,11 @@
 import subprocess
 import json
 from pathlib import Path
-from typing import List, Set, Tuple, Dict
+from typing import List, Set, Tuple, Dict, Optional
 import pathspec
 import tree_sitter
 import tree_sitter_solidity
+import difflib
 
 # Initialize language and parser
 SOLIDITY_LANGUAGE = tree_sitter.Language(tree_sitter_solidity.language(), "solidity")
@@ -45,110 +46,210 @@ def get_changed_files(base_commit: str, head_commit: str, project_root: Path) ->
     print(f"Changed files: {changed_files}")
     return changed_files
 
+def get_file_content_at_commit(commit: str, file_path: str, project_root: Path) -> bytes:
+    """Gets file content at the specified commit."""
+    cmd = ["git", "show", f"{commit}:{file_path}"]
+    try:
+        content = subprocess.check_output(cmd, cwd=project_root)
+        print(f"Content of {file_path} at {commit[:8]}: {content[:100]}...")
+        return content
+    except subprocess.CalledProcessError:
+        print(f"File {file_path} not found at commit {commit}")
+        return b""
+
 def get_file_content_at_head(head_commit: str, file_path: str, project_root: Path) -> bytes:
     """Gets file content at the target commit."""
-    cmd = ["git", "show", f"{head_commit}:{file_path}"]
-    content = subprocess.check_output(cmd, cwd=project_root)
-    print(f"Content of {file_path} at {head_commit[:8]}: {content[:100]}...")
-    return content
+    return get_file_content_at_commit(head_commit, file_path, project_root)
 
-def get_changed_lines(base_commit: str, head_commit: str, file_path: str, project_root: Path) -> Set[int]:
-    """Finds line numbers that were changed in the new file."""
-    cmd = ["git", "diff", base_commit, head_commit, "--", file_path]
-    diff_output = subprocess.check_output(cmd, cwd=project_root).decode("utf-8")
-    changed_lines = set()
-    current_line = None
-    
-    print(f"Diff for {file_path}:\n{diff_output}")
-    for line in diff_output.splitlines():
-        if line.startswith("@@"):
-            parts = line.split()
-            new_range = parts[2]  # example: +12,4
-            start = int(new_range.split(",")[0][1:])
-            current_line = start
-        elif line.startswith("+") and current_line is not None and not line.startswith("+++"):
-            changed_lines.add(current_line)
-            current_line += 1
-        elif line.startswith(" ") and current_line is not None:
-            current_line += 1
-    
-    print(f"Changed lines for {file_path}: {changed_lines}")
-    return changed_lines
+def get_file_content_at_base(base_commit: str, file_path: str, project_root: Path) -> bytes:
+    """Gets file content at the base commit."""
+    return get_file_content_at_commit(base_commit, file_path, project_root)
 
-def get_line_starts(source_bytes: bytes) -> List[int]:
-    """Calculates byte offsets for the start of each line."""
-    line_starts = [0]
-    for i, b in enumerate(source_bytes):
-        if b == ord("\n"):
-            line_starts.append(i + 1)
-    return line_starts
+def parse_solidity_file(content: bytes) -> tree_sitter.Tree:
+    """Parses Solidity file content into an AST."""
+    return PARSER.parse(content)
 
-def byte_to_line(line_starts: List[int], byte_offset: int) -> int:
-    """Converts byte offset to line number (1-based)."""
-    import bisect
-    line = bisect.bisect_right(line_starts, byte_offset)
-    return line
+def find_node_by_type(node: tree_sitter.Node, node_type: str) -> Optional[tree_sitter.Node]:
+    """Finds the first child node of the specified type."""
+    for child in node.children:
+        if child.type == node_type:
+            return child
+    return None
 
-def get_line_range(line_starts: List[int], start_byte: int, end_byte: int) -> Tuple[int, int]:
-    """Converts byte range to line range."""
-    start_line = byte_to_line(line_starts, start_byte)
-    end_line = byte_to_line(line_starts, end_byte - 1) if end_byte > start_byte else start_line
-    print(f"Line range for bytes {start_byte}-{end_byte}: {start_line}-{end_line}")
-    return start_line, end_line
-
-def overlaps(changed_lines: Set[int], start_line: int, end_line: int) -> bool:
-    """Checks if changed lines overlap with the range."""
-    result = any(line >= start_line and line <= end_line for line in changed_lines)
-    print(f"Overlap check: changed_lines={changed_lines}, range={start_line}-{end_line}, result={result}")
+def find_nodes_by_type(node: tree_sitter.Node, node_type: str) -> List[tree_sitter.Node]:
+    """Finds all child nodes of the specified type."""
+    result = []
+    for child in node.children:
+        if child.type == node_type:
+            result.append(child)
     return result
 
-def extract_declarations(source_bytes: bytes) -> List[Dict]:
-    """Extracts declarations from Solidity file with types for top-level"""
-    tree = PARSER.parse(source_bytes)
+def get_node_text(node: tree_sitter.Node, source_bytes: bytes) -> str:
+    """Gets the text content of a node."""
+    return source_bytes[node.start_byte:node.end_byte].decode("utf-8")
+
+def get_node_name(node: tree_sitter.Node, source_bytes: bytes) -> Optional[str]:
+    """Gets the name of a node (for contracts, functions, etc.)."""
+    identifier = find_node_by_type(node, "identifier")
+    if identifier:
+        return get_node_text(identifier, source_bytes)
+    
+    # Special case for constructor
+    if node.type == "function_definition":
+        for child in node.children:
+            if child.type == "constructor":
+                return "$constructor"
+    
+    return None
+
+def extract_contracts(tree: tree_sitter.Tree, source_bytes: bytes) -> List[Dict]:
+    """Extracts all contracts, libraries, and interfaces from the AST."""
     root = tree.root_node
     declarations = []
     
     for child in root.children:
         decl_type = child.type
         if decl_type in ("contract_declaration", "library_declaration", "interface_declaration"):
-            name_node = next((c for c in child.children if c.type == "identifier"), None)
-            if name_node:
-                name = source_bytes[name_node.start_byte:name_node.end_byte].decode("utf-8")
-                start_byte = child.start_byte
-                end_byte = child.end_byte
-                sub_declarations = []
+            name = get_node_name(child, source_bytes)
+            if name:
+                contract_type = {
+                    "contract_declaration": "contract",
+                    "library_declaration": "library",
+                    "interface_declaration": "interface"
+                }[decl_type]
                 
-                body = next((c for c in child.children if c.type == "contract_body"), None)
+                # Extract methods
+                methods = []
+                body = find_node_by_type(child, "contract_body")
                 if body:
                     for sub_child in body.children:
                         if sub_child.type in ("function_definition", "modifier_definition"):
-                            sub_name_node = next((c for c in sub_child.children if c.type == "identifier"), None)
-                            if sub_name_node:
-                                sub_name = source_bytes[sub_name_node.start_byte:sub_name_node.end_byte].decode("utf-8")
-                            elif sub_child.type == "function_definition" and "constructor" in [c.type for c in sub_child.children]:
-                                sub_name = "$constructor"
-                            else:
-                                continue
-                            sub_declarations.append({
-                                "name": sub_name,
-                                "start_byte": sub_child.start_byte,
-                                "end_byte": sub_child.end_byte
-                            })
+                            method_name = get_node_name(sub_child, source_bytes)
+                            if method_name:
+                                methods.append({
+                                    "name": method_name,
+                                    "node": sub_child,
+                                    "text": get_node_text(sub_child, source_bytes)
+                                })
                 
                 declarations.append({
                     "name": name,
-                    "type": {
-                        "contract_declaration": "contract",
-                        "library_declaration": "library",
-                        "interface_declaration": "interface"
-                    }[decl_type],
-                    "start_byte": start_byte,
-                    "end_byte": end_byte,
-                    "sub_declarations": sub_declarations
+                    "type": contract_type,
+                    "node": child,
+                    "methods": methods
                 })
     
-    print(f"Extracted declarations: {declarations}")
     return declarations
+
+def compare_methods(old_method: Dict, new_method: Dict) -> bool:
+    """Compares two methods to determine if they are functionally different."""
+    # Normalize whitespace and comments
+    old_text = old_method["text"].strip()
+    new_text = new_method["text"].strip()
+    
+    # Remove comments and normalize whitespace
+    old_text = remove_comments_and_normalize(old_text)
+    new_text = remove_comments_and_normalize(new_text)
+    
+    # Compare normalized texts
+    return old_text != new_text
+
+def remove_comments_and_normalize(text: str) -> str:
+    """Removes comments and normalizes whitespace in Solidity code."""
+    # This is a simplified version - in a real implementation,
+    # you would use a proper Solidity parser to handle all comment types
+    lines = text.split("\n")
+    result = []
+    
+    for line in lines:
+        # Skip comment lines
+        if line.strip().startswith("//") or line.strip().startswith("/*") or line.strip().startswith("*"):
+            continue
+        
+        # Remove inline comments
+        if "//" in line:
+            line = line.split("//")[0]
+        if "/*" in line:
+            line = line.split("/*")[0]
+        
+        # Add non-empty lines
+        if line.strip():
+            result.append(line.strip())
+    
+    return " ".join(result)
+
+def find_changed_methods(base_tree: tree_sitter.Tree, head_tree: tree_sitter.Tree, 
+                         base_content: bytes, head_content: bytes) -> List[Dict]:
+    """Finds methods that have been changed between the base and head commits."""
+    base_contracts = extract_contracts(base_tree, base_content)
+    head_contracts = extract_contracts(head_tree, head_content)
+    
+    changed_methods = []
+    
+    # Create maps for easy lookup
+    base_contract_map = {contract["name"]: contract for contract in base_contracts}
+    head_contract_map = {contract["name"]: contract for contract in head_contracts}
+    
+    # Check for modified contracts
+    for contract_name, head_contract in head_contract_map.items():
+        if contract_name in base_contract_map:
+            base_contract = base_contract_map[contract_name]
+            
+            # Create maps for methods
+            base_method_map = {method["name"]: method for method in base_contract["methods"]}
+            head_method_map = {method["name"]: method for method in head_contract["methods"]}
+            
+            # Check for modified methods
+            for method_name, head_method in head_method_map.items():
+                if method_name in base_method_map:
+                    base_method = base_method_map[method_name]
+                    if compare_methods(base_method, head_method):
+                        changed_methods.append({
+                            "contract": contract_name,
+                            "contract_type": head_contract["type"],
+                            "method": method_name
+                        })
+                else:
+                    # New method
+                    changed_methods.append({
+                        "contract": contract_name,
+                        "contract_type": head_contract["type"],
+                        "method": method_name,
+                        "status": "added"
+                    })
+            
+            # Check for deleted methods
+            for method_name in base_method_map:
+                if method_name not in head_method_map:
+                    changed_methods.append({
+                        "contract": contract_name,
+                        "contract_type": base_contract["type"],
+                        "method": method_name,
+                        "status": "deleted"
+                    })
+        else:
+            # New contract - all methods are new
+            for method in head_contract["methods"]:
+                changed_methods.append({
+                    "contract": contract_name,
+                    "contract_type": head_contract["type"],
+                    "method": method["name"],
+                    "status": "added"
+                })
+    
+    # Check for deleted contracts
+    for contract_name in base_contract_map:
+        if contract_name not in head_contract_map:
+            base_contract = base_contract_map[contract_name]
+            for method in base_contract["methods"]:
+                changed_methods.append({
+                    "contract": contract_name,
+                    "contract_type": base_contract["type"],
+                    "method": method["name"],
+                    "status": "deleted"
+                })
+    
+    return changed_methods
 
 def analyze_changes(base_commit: str, head_commit: str, project_root: str = ".", scopeignore_path: str = ".scopeignore") -> List[Dict]:
     """Analyzes changes between commits and returns a list of change objects."""
@@ -166,41 +267,67 @@ def analyze_changes(base_commit: str, head_commit: str, project_root: str = ".",
             continue
         
         print(f"Processing file: {file_path} (status: {status})")
-        source_bytes = get_file_content_at_head(head_commit, file_path, project_root)
-        declarations = extract_declarations(source_bytes)
         
-        file_entry = {
-            "file": file_path,
-            "status": status,
-            "contracts": []
-        }
+        # Get file content at both commits
+        head_content = get_file_content_at_head(head_commit, file_path, project_root)
         
-        for decl in declarations:
-            contract_entry = {
-                "name": decl["name"],
-                "type": decl["type"],
-                "methods": []
+        if status == "A":
+            # New file - all contracts and methods are new
+            head_tree = parse_solidity_file(head_content)
+            head_contracts = extract_contracts(head_tree, head_content)
+            
+            file_entry = {
+                "file": file_path,
+                "status": status,
+                "contracts": []
             }
             
-            if status == "A":
-                contract_entry["methods"] = [
-                    sub_decl["name"]
-                    for sub_decl in decl["sub_declarations"]
-                ]
-            elif status == "M":
-                changed_lines = get_changed_lines(base_commit, head_commit, file_path, project_root)
-                line_starts = get_line_starts(source_bytes)
-                
-                for sub_decl in decl["sub_declarations"]:
-                    sub_start, sub_end = get_line_range(line_starts, sub_decl["start_byte"], sub_decl["end_byte"])
-                    if overlaps(changed_lines, sub_start, sub_end):
-                        contract_entry["methods"].append(sub_decl["name"])
-
-            if contract_entry["methods"] or status == "A":
+            for contract in head_contracts:
+                contract_entry = {
+                    "name": contract["name"],
+                    "type": contract["type"],
+                    "methods": [method["name"] for method in contract["methods"]]
+                }
                 file_entry["contracts"].append(contract_entry)
-        
-        if file_entry["contracts"]:
+            
             result.append(file_entry)
+            
+        elif status == "M":
+            # Modified file - compare ASTs to find changed methods
+            base_content = get_file_content_at_base(base_commit, file_path, project_root)
+            
+            if not base_content:
+                print(f"Warning: Could not get base content for {file_path}, skipping")
+                continue
+            
+            base_tree = parse_solidity_file(base_content)
+            head_tree = parse_solidity_file(head_content)
+            
+            changed_methods = find_changed_methods(base_tree, head_tree, base_content, head_content)
+            
+            # Group changes by contract
+            contract_changes = {}
+            for change in changed_methods:
+                contract_name = change["contract"]
+                if contract_name not in contract_changes:
+                    contract_changes[contract_name] = {
+                        "name": contract_name,
+                        "type": change["contract_type"],
+                        "methods": []
+                    }
+                
+                # Only include methods that were modified (not added or deleted)
+                if "status" not in change:
+                    contract_changes[contract_name]["methods"].append(change["method"])
+            
+            file_entry = {
+                "file": file_path,
+                "status": status,
+                "contracts": list(contract_changes.values())
+            }
+            
+            if file_entry["contracts"]:
+                result.append(file_entry)
     
     print(f"Final result: {json.dumps(result, indent=2)}")
     return result
