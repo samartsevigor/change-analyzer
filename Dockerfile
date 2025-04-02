@@ -12,5 +12,6 @@ COPY entrypoint.sh /entrypoint.sh
 COPY change_analyzer.py /change_analyzer.py
 
 RUN chmod +x /entrypoint.sh
+RUN git config --global --add safe.directory /github/workspace
 
 ENTRYPOINT ["/entrypoint.sh"] 
