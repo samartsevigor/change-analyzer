@@ -1,9 +1,28 @@
-name: Smart Contract Change Analyzer
+name: Solidity Change Analyzer
 on:
-  pull_request:
-    branches:
-      - master
-      - main
+  # Manual trigger with inputs
+  workflow_dispatch:
+    inputs:
+      base_commit:
+        description: 'Base commit SHA for comparison'
+        required: true
+      head_commit:
+        description: 'Head commit SHA for comparison'
+        required: true
+        default: 'HEAD'
+
+  # Uncomment to enable automatic run on pull requests
+  # pull_request:
+  #   branches:
+  #     - master
+  #     - main
+
+  # Uncomment to enable automatic run on push
+  # push:
+  #   branches:
+  #     - master
+  #     - main
+
 jobs:
   analyze:
     runs-on: ubuntu-latest
@@ -12,13 +31,16 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
+      
       - name: Analyze Solidity Changes
         uses: samartsevigor/change-analyzer@v1.0.4
         with:
-          base_commit: ${{ github.event.pull_request.base.sha }}
-          head_commit: ${{ github.event.pull_request.head.sha }}
+          # For manual trigger, use the provided inputs
+          base_commit: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.base_commit || github.event.pull_request.base.sha }}
+          head_commit: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.head_commit || github.event.pull_request.head.sha }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          scopeignore_path: '.scopeignore'  # Default path, can be customized
+          scopeignore_path: '.scopeignore'  # Optional, defaults to '.scopeignore'
+      
       - name: Upload Results
         uses: actions/upload-artifact@v4
         with:

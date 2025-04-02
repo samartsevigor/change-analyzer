@@ -11,15 +11,23 @@ This GitHub Action analyzes Solidity smart contract changes between commits to i
 
 ## Usage
 
-Add this GitHub Action to your workflow to analyze changes in Solidity files:
+Add this GitHub Action to your workflow to analyze changes in Solidity files. You can trigger it manually or automatically with pull requests.
+
+### Manual Trigger Example
 
 ```yaml
-name: Analyze Smart Contract Changes
+name: Solidity Change Analyzer
 on:
-  pull_request:
-    branches:
-      - main
-      - master
+  # Manual trigger with inputs
+  workflow_dispatch:
+    inputs:
+      base_commit:
+        description: 'Base commit SHA for comparison'
+        required: true
+      head_commit:
+        description: 'Head commit SHA for comparison'
+        required: true
+        default: 'HEAD'
 
 jobs:
   analyze:
@@ -33,8 +41,9 @@ jobs:
       - name: Analyze Solidity Changes
         uses: samartsevigor/change-analyzer@v1.0.4
         with:
-          base_commit: ${{ github.event.pull_request.base.sha }}
-          head_commit: ${{ github.event.pull_request.head.sha }}
+          # For manual trigger, use the provided inputs
+          base_commit: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.base_commit || github.event.pull_request.base.sha }}
+          head_commit: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.head_commit || github.event.pull_request.head.sha }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           scopeignore_path: '.scopeignore'  # Optional, defaults to '.scopeignore'
           
@@ -44,6 +53,17 @@ jobs:
           name: changed-declarations
           path: changed_declarations.json
 ```
+
+## How to Trigger Manually
+
+To run the analysis manually:
+
+1. Go to your repository on GitHub
+2. Navigate to the "Actions" tab
+3. Select the "Solidity Change Analyzer" workflow from the left sidebar
+4. Click the "Run workflow" button
+5. Enter the base commit SHA and head commit SHA
+6. Click "Run workflow"
 
 ## Inputs
 
