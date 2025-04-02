@@ -13,7 +13,7 @@ PARSER.set_language(SOLIDITY_LANGUAGE)
 
 def read_ignore_patterns(project_root: Path, scopeignore_path: str = ".scopeignore") -> pathspec.PathSpec:
     """Reads ignore patterns from .scopeignore and adds default ones."""
-    default_patterns = ["node_modules/", "[Tt]ests/", "[Tt]est/", "[Mm]ocks/", "[Mm]ock/", "[Ii]nterfaces/", "[Ii]nterface/", "*[Ii]nterface.sol"]
+    default_patterns = ["node_modules/", "[Tt]ests/", "[Tt]est/", "[Mm]ocks/", "[Mm]ock/", "[Ii]nterfaces/", "[Ii]nterface/", "*[Ii]nterface.sol", "*[Tt]est.sol", "*[Mm]ock.sol"]
     ignore_file = project_root / scopeignore_path
     patterns = []
     

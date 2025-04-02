@@ -1,0 +1,19 @@
+# This file contains patterns for files that should be ignored during the Solidity changes analysis.
+
+# Dependencies
+node_modules/
+
+# Test files
+[Tt]ests/
+[Tt]est/
+*[Tt]est.sol
+
+# Mock files
+[Mm]ocks/
+[Mm]ock/
+*[Mm]ock.sol
+
+# Interfaces
+[Ii]nterfaces/
+[Ii]nterface/
+*[Ii]nterface.sol
