@@ -1,21 +1,21 @@
 name: Smart Contract Change Analyzer
 on:
-  # Manual trigger with inputs
-  # workflow_dispatch:
-  #   inputs:
-  #     base_commit:
-  #       description: 'Base commit SHA for comparison'
-  #       required: true
-  #     head_commit:
-  #       description: 'Head commit SHA for comparison'
-  #       required: true
-  #       default: 'HEAD'
+  Manual trigger with inputs
+  workflow_dispatch:
+    inputs:
+      base_commit:
+        description: 'Base commit SHA for comparison'
+        required: true
+      head_commit:
+        description: 'Head commit SHA for comparison'
+        required: true
+        default: 'HEAD'
 
-  Uncomment to enable automatic run on pull requests
-  pull_request:
-    branches:
-      - master
-      - main
+  # Uncomment to enable automatic run on pull requests
+  # pull_request:
+  #   branches:
+  #     - master
+  #     - main
 
   # Uncomment to enable automatic run on push
   # push:
