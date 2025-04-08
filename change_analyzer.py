@@ -1,11 +1,16 @@
 import subprocess
 import json
 from pathlib import Path
-from typing import List, Set, Tuple, Dict, Optional
+from typing import List, Tuple, Dict, Optional #, Set
 import pathspec
 import tree_sitter
 import tree_sitter_solidity
-import difflib
+# import difflib
+import zipfile
+import os
+import tempfile
+import requests
+# import shutil
 
 # Initialize language and parser
 SOLIDITY_LANGUAGE = tree_sitter.Language(tree_sitter_solidity.language(), "solidity")
@@ -283,13 +288,118 @@ def find_changed_methods(base_tree: tree_sitter.Tree, head_tree: tree_sitter.Tre
     
     return changed_methods
 
-def analyze_changes(base_commit: str, head_commit: str, project_root: str = ".", scopeignore_path: str = ".scopeignore") -> List[Dict]:
+def create_project_zip(project_root: Path, ignore_spec: pathspec.PathSpec = None) -> str:
+    """Creates a zip file of the complete project, including all files."""
+    print("Creating full repository ZIP archive for audit submission...")
+    
+    # Create a temporary directory for the zip file
+    temp_dir = tempfile.mkdtemp()
+    
+    # Get repository name from path
+    repo_name = os.path.basename(project_root)
+    if not repo_name or repo_name == '.':
+        # Try to get from environment variable if available
+        if os.environ.get('GITHUB_REPOSITORY'):
+            repo_name = os.environ.get('GITHUB_REPOSITORY').split('/')[-1]
+        else:
+            repo_name = "repository"
+    
+    zip_filename = f"{repo_name}.zip"
+    zip_path = os.path.join(temp_dir, zip_filename)
+    
+    print(f"Creating ZIP archive for repository: {repo_name}")
+    
+    # List of standard directories to skip
+    standard_skip_dirs = ['.git', '.github', 'node_modules']
+    
+    with zipfile.ZipFile(zip_path, 'w') as zipf:
+        for root, dirs, files in os.walk(project_root):
+            # Convert to relative paths
+            rel_root = os.path.relpath(root, project_root)
+            if rel_root == '.':
+                rel_root = ''
+            
+            # Skip standard directories that shouldn't be included in the archive
+            dirs[:] = [d for d in dirs if d not in standard_skip_dirs]
+            
+            # Add all files (no filtering by ignore spec)
+            for file in files:
+                rel_path = os.path.join(rel_root, file)
+                zipf.write(os.path.join(root, file), rel_path)
+    
+    print(f"Full repository ZIP created at {zip_path} (including all files)")
+    return zip_path
+
+def send_to_audit_service(zip_path: str, changed_files: List[str], api_token: str, api_url: str) -> Dict:
+    """Sends the project ZIP and changed files to the audit service."""
+    if not api_token:
+        print("ERROR: API token is required to send the project to the audit service.")
+        print("Please get an API token from https://savant.chat:")
+        print("1. Login to your account")
+        print("2. Go to Settings")
+        print("3. Navigate to API Keys tab")
+        print("4. Create a new API key")
+        return {"error": "API token is required"}
+    
+    print(f"Sending project to audit service at {api_url}...")
+    
+    # Prepare request data
+    headers = {
+        "Authorization": f"Bearer {api_token}"
+    }
+    
+    # Prepare the params data
+    params_data = {
+        "ignoreLimits": False,
+        "dryRun": False,
+        "selectedFiles": {
+            "code": changed_files
+        }
+    }
+    
+    # Get the zip filename from the path
+    zip_filename = os.path.basename(zip_path)
+    print(f"Using filename for upload: {zip_filename}")
+    
+    # Create multipart form data
+    files = {
+        'file': (zip_filename, open(zip_path, 'rb'), 'application/zip'),
+        'params': (None, json.dumps(params_data), 'application/json')
+    }
+    
+    try:
+        response = requests.post(api_url, headers=headers, files=files)
+        response.raise_for_status()
+        result = response.json()
+        print("Project successfully sent to audit service!")
+        return result
+    except requests.exceptions.RequestException as e:
+        print(f"Error sending project to audit service: {str(e)}")
+        if hasattr(e, 'response') and e.response:
+            try:
+                error_data = e.response.json()
+                print(f"Server error: {json.dumps(error_data)}")
+                return error_data
+            except:
+                return {"error": str(e)}
+        return {"error": str(e)}
+    finally:
+        # Clean up the zip file
+        try:
+            os.remove(zip_path)
+            os.rmdir(os.path.dirname(zip_path))
+        except:
+            pass
+
+def analyze_changes(base_commit: str, head_commit: str, project_root: str = ".", scopeignore_path: str = ".scopeignore",
+                   api_token: str = None, api_url: str = None, send_to_audit: str = "false") -> List[Dict]:
     """Analyzes changes between commits and returns a list of change objects."""
     project_root = Path(project_root).resolve()
     ignore_spec = read_ignore_patterns(project_root, scopeignore_path)
     changed_files = get_changed_files(base_commit, head_commit, project_root)
     
     result = []
+    all_changed_file_paths = []
     
     for status, file_path in changed_files:
         match = ignore_spec.match_file(file_path)
@@ -298,6 +408,7 @@ def analyze_changes(base_commit: str, head_commit: str, project_root: str = ".",
             print(f"Ignored file: {file_path}")
             continue
         
+        all_changed_file_paths.append(file_path)
         print(f"Processing file: {file_path} (status: {status})")
         
         # Get file content at both commits
@@ -361,23 +472,51 @@ def analyze_changes(base_commit: str, head_commit: str, project_root: str = ".",
             if file_entry["contracts"]:
                 result.append(file_entry)
     
-    print(f"Final result: {json.dumps(result, indent=2)}")
+    # Save analysis results to file
+    with open("changed_declarations.json", "w") as f:
+        json.dump(result, f, indent=2)
+    print("Analysis completed. Results written to changed_declarations.json")
+    
+    # Send to audit service if enabled
+    audit_result = {}
+    if send_to_audit.lower() == "true" and all_changed_file_paths:
+        print(f"Sending changes to audit service: {len(all_changed_file_paths)} files")
+        # Create a complete repository ZIP without filtering
+        zip_path = create_project_zip(project_root)
+        # Send to audit service with the list of changed files
+        audit_result = send_to_audit_service(zip_path, all_changed_file_paths, api_token, api_url)
+        # Save audit result
+        with open("audit_response.json", "w") as f:
+            json.dump(audit_result, f, indent=2)
+        print("Audit service response saved to audit_response.json")
+    
     return result
 
 if __name__ == "__main__":
     import sys
     if len(sys.argv) < 3:
-        print("Usage: python change_analyzer.py <base_commit> <head_commit> [project_path] [scopeignore_path]")
+        print("Usage: python change_analyzer.py <base_commit> <head_commit> [project_path] [scopeignore_path] [api_token] [api_url] [send_to_audit]")
         sys.exit(1)
     
     base_commit, head_commit = sys.argv[1], sys.argv[2]
     project_path = sys.argv[3] if len(sys.argv) > 3 else "."
     scopeignore_path = sys.argv[4] if len(sys.argv) > 4 else ".scopeignore"
+    api_token = sys.argv[5] if len(sys.argv) > 5 else None
+    api_url = sys.argv[6] if len(sys.argv) > 6 else "https://savant.chat/api/v1/requests/create"
+    send_to_audit = sys.argv[7] if len(sys.argv) > 7 else "false"
     
     print(f"Analyzing changes between {base_commit} and {head_commit} in {project_path}")
     print(f"Using scopeignore from: {scopeignore_path}")
-    result = analyze_changes(base_commit, head_commit, project_path, scopeignore_path)
     
-    with open("changed_declarations.json", "w") as f:
-        json.dump(result, f, indent=2)
-    print("Analysis completed. Results written to changed_declarations.json")
+    if send_to_audit.lower() == "true":
+        if not api_token:
+            print("ERROR: API token is required to send the project to the audit service.")
+            print("Please get an API token from https://savant.chat:")
+            print("1. Login to your account")
+            print("2. Go to Settings")
+            print("3. Navigate to API Keys tab")
+            print("4. Create a new API key")
+            sys.exit(1)
+        print(f"Will send changes to audit service at {api_url}")
+    
+    analyze_changes(base_commit, head_commit, project_path, scopeignore_path, api_token, api_url, send_to_audit)

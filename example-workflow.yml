@@ -10,14 +10,19 @@ on:
         description: 'Head commit SHA for comparison'
         required: true
         default: 'HEAD'
+      send_to_audit:
+        description: 'Send changes to audit service'
+        required: false
+        default: 'false'
+        type: boolean
 
-  # Uncomment to enable automatic run on pull requests
+  # Automatically trigger on pull requests
   # pull_request:
   #   branches:
   #     - master
   #     - main
 
-  # Uncomment to enable automatic run on push
+  # Trigger on push to specified branches
   # push:
   #   branches:
   #     - master
@@ -40,9 +45,19 @@ jobs:
           head_commit: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.head_commit || github.event_name == 'push' && github.sha || github.event.pull_request.head.sha }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           scopeignore_path: '.scopeignore'  # Optional, defaults to '.scopeignore'
+          api_token: ${{ secrets.AUDIT_API_TOKEN }}  # API token for the audit service
+          api_url: 'https://savant.chat/api/v1/requests/create'
+          send_to_audit: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.send_to_audit || 'true' }}
       
       - name: Upload Results
         uses: actions/upload-artifact@v4
         with:
           name: changed-declarations
-          path: changed_declarations.json 
+          path: changed_declarations.json
+          
+      - name: Upload Audit Response
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.send_to_audit == 'true' || false }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: audit-response
+          path: audit_response.json 

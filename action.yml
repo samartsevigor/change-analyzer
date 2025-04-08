@@ -18,13 +18,31 @@ inputs:
     description: 'Path to .scopeignore file in repository (relative to repo root)'
     required: false
     default: '.scopeignore'
+  api_token:
+    description: 'API token for the audit service. Get it from https://savant.chat (Profile -> Settings -> API Keys)'
+    required: false
+  api_url:
+    description: 'URL for the audit service API endpoint'
+    required: false
+    default: 'https://savant.chat/api/v1/requests/create'
+  send_to_audit:
+    description: 'Whether to send the analysis to the audit service'
+    required: false
+    default: 'true'
 outputs:
   changes_file:
     description: 'Path to the JSON file with analyzed changes'
     value: 'changed_declarations.json'
+  audit_response:
+    description: 'Response from the audit service (if enabled)'
+    value: ${{ steps.analyze.outputs.audit_response }}
 runs:
   using: 'docker'
   image: 'Dockerfile'
   args:
     - ${{ inputs.base_commit }}
-    - ${{ inputs.head_commit }} 
+    - ${{ inputs.head_commit }}
+    - ${{ inputs.scopeignore_path }}
+    - ${{ inputs.api_token }}
+    - ${{ inputs.api_url }}
+    - ${{ inputs.send_to_audit }} 

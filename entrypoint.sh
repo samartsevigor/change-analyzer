@@ -6,6 +6,9 @@ HEAD_COMMIT=${INPUT_HEAD_COMMIT}
 GITHUB_REPO=${GITHUB_REPOSITORY}
 GITHUB_TOKEN=${INPUT_GITHUB_TOKEN}
 SCOPEIGNORE_PATH=${INPUT_SCOPEIGNORE_PATH:-".scopeignore"}
+API_TOKEN=${INPUT_API_TOKEN}
+API_URL=${INPUT_API_URL:-"https://savant.chat/api/v1/requests/create"}
+SEND_TO_AUDIT=${INPUT_SEND_TO_AUDIT:-"true"}
 
 # Debug output
 echo "Base commit: $BASE_COMMIT"
@@ -13,6 +16,8 @@ echo "Head commit: $HEAD_COMMIT"
 echo "Working directory: $(pwd)"
 echo "GitHub repository: $GITHUB_REPO"
 echo "Scopeignore path: $SCOPEIGNORE_PATH"
+echo "Send to audit service: $SEND_TO_AUDIT"
+echo "API URL: $API_URL"
 
 # Ensure we're in the workspace
 cd /github/workspace
@@ -37,7 +42,7 @@ else
 fi
 
 # Run analyzer with proper workspace path and scopeignore path
-python /change_analyzer.py "$BASE_COMMIT" "$HEAD_COMMIT" "/github/workspace" "$SCOPEIGNORE_PATH"
+python /change_analyzer.py "$BASE_COMMIT" "$HEAD_COMMIT" "/github/workspace" "$SCOPEIGNORE_PATH" "$API_TOKEN" "$API_URL" "$SEND_TO_AUDIT"
 
 # Check execution status
 if [ $? -eq 0 ]; then

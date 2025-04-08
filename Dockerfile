@@ -6,7 +6,7 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-RUN pip install --no-cache-dir pathspec tree-sitter==0.21.3 tree-sitter-solidity
+RUN pip install --no-cache-dir pathspec tree-sitter==0.21.3 tree-sitter-solidity requests
 
 COPY entrypoint.sh /entrypoint.sh
 COPY change_analyzer.py /change_analyzer.py
