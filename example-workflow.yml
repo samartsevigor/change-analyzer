@@ -13,7 +13,7 @@ on:
       send_to_audit:
         description: 'Send changes to audit service'
         required: false
-        default: 'false'
+        default: 'true'
         type: boolean
 
   # Automatically trigger on pull requests
@@ -49,15 +49,8 @@ jobs:
           api_url: 'https://savant.chat/api/v1/requests/create'
           send_to_audit: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.send_to_audit || 'true' }}
       
-      - name: Upload Results
+      - name: Upload Analysis Results
         uses: actions/upload-artifact@v4
         with:
           name: changed-declarations
-          path: changed_declarations.json
-          
-      - name: Upload Audit Response
-        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.send_to_audit == 'true' || false }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: audit-response
-          path: audit_response.json 
+          path: changed_declarations.json 

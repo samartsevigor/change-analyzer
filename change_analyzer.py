@@ -348,18 +348,53 @@ def send_to_audit_service(zip_path: str, changed_files: List[str], api_token: st
         "Authorization": f"Bearer {api_token}"
     }
     
+    # Ensure we only include .sol files in the selected files
+    sol_files = [f for f in changed_files if f.endswith('.sol')]
+    if not sol_files:
+        print("WARNING: No .sol files found in the changed files list")
+        return {"error": "No .sol files to analyze"}
+    
+    # Log the files we're going to analyze
+    print(f"Solidity files to be analyzed by audit service:")
+    for idx, file in enumerate(sol_files, 1):
+        print(f"  {idx}. {file}")
+    
     # Prepare the params data
     params_data = {
         "ignoreLimits": False,
         "dryRun": False,
         "selectedFiles": {
-            "code": changed_files
+            "code": sol_files
         }
     }
+    
+    print(f"Selected files parameter: {json.dumps(params_data['selectedFiles'])}")
     
     # Get the zip filename from the path
     zip_filename = os.path.basename(zip_path)
     print(f"Using filename for upload: {zip_filename}")
+    
+    # Verify the ZIP file exists and is readable
+    if not os.path.exists(zip_path):
+        print(f"ERROR: ZIP file does not exist at {zip_path}")
+        return {"error": "ZIP file does not exist"}
+    
+    # Get ZIP file size
+    zip_size = os.path.getsize(zip_path)
+    print(f"ZIP file size: {zip_size} bytes ({zip_size / (1024*1024):.2f} MB)")
+    
+    try:
+        # Verify the contents of the ZIP file
+        with zipfile.ZipFile(zip_path, 'r') as zipf:
+            zip_contents = zipf.namelist()
+            print(f"ZIP contains {len(zip_contents)} files")
+            
+            # Check if selected files exist in the ZIP
+            missing_files = [f for f in sol_files if f not in zip_contents]
+            if missing_files:
+                print(f"WARNING: The following selected files are not in the ZIP: {missing_files}")
+    except Exception as e:
+        print(f"ERROR verifying ZIP contents: {str(e)}")
     
     # Create multipart form data
     files = {
@@ -368,19 +403,44 @@ def send_to_audit_service(zip_path: str, changed_files: List[str], api_token: st
     }
     
     try:
+        # Send the request with detailed logging
+        print(f"Sending POST request to {api_url} with file {zip_filename}")
         response = requests.post(api_url, headers=headers, files=files)
-        response.raise_for_status()
-        result = response.json()
-        print("Project successfully sent to audit service!")
-        return result
+        
+        # Print response status and headers
+        print(f"Response status code: {response.status_code}")
+        print(f"Response headers: {dict(response.headers)}")
+        
+        # Try to get JSON response
+        try:
+            result = response.json()
+            print(f"Response JSON: {json.dumps(result, indent=2)}")
+            
+            # Check for specific error conditions
+            if 'error' in result:
+                print(f"ERROR from audit service: {result['error']}")
+                if result['error'] == 'No valid files selected':
+                    print("The audit service couldn't find any valid Solidity files among the selected files")
+            
+            return result
+        except json.JSONDecodeError:
+            # If response is not JSON, print the text
+            print(f"Response text (not JSON): {response.text[:500]}")
+            return {"error": f"Invalid JSON response: {response.text[:200]}..."}
+        
     except requests.exceptions.RequestException as e:
-        print(f"Error sending project to audit service: {str(e)}")
+        print(f"ERROR sending project to audit service: {str(e)}")
         if hasattr(e, 'response') and e.response:
             try:
+                print(f"Response status code: {e.response.status_code}")
+                print(f"Response headers: {dict(e.response.headers)}")
+                
                 error_data = e.response.json()
-                print(f"Server error: {json.dumps(error_data)}")
+                print(f"Server error: {json.dumps(error_data, indent=2)}")
                 return error_data
-            except:
+            except (json.JSONDecodeError, AttributeError):
+                if hasattr(e, 'response') and e.response and hasattr(e.response, 'text'):
+                    print(f"Response text: {e.response.text[:500]}")
                 return {"error": str(e)}
         return {"error": str(e)}
     finally:
@@ -388,8 +448,8 @@ def send_to_audit_service(zip_path: str, changed_files: List[str], api_token: st
         try:
             os.remove(zip_path)
             os.rmdir(os.path.dirname(zip_path))
-        except:
-            pass
+        except Exception as cleanup_error:
+            print(f"WARNING: Failed to clean up temporary files: {str(cleanup_error)}")
 
 def analyze_changes(base_commit: str, head_commit: str, project_root: str = ".", scopeignore_path: str = ".scopeignore",
                    api_token: str = None, api_url: str = None, send_to_audit: str = "false") -> List[Dict]:
@@ -478,17 +538,14 @@ def analyze_changes(base_commit: str, head_commit: str, project_root: str = ".",
     print("Analysis completed. Results written to changed_declarations.json")
     
     # Send to audit service if enabled
-    audit_result = {}
     if send_to_audit.lower() == "true" and all_changed_file_paths:
         print(f"Sending changes to audit service: {len(all_changed_file_paths)} files")
         # Create a complete repository ZIP without filtering
         zip_path = create_project_zip(project_root)
         # Send to audit service with the list of changed files
         audit_result = send_to_audit_service(zip_path, all_changed_file_paths, api_token, api_url)
-        # Save audit result
-        with open("audit_response.json", "w") as f:
-            json.dump(audit_result, f, indent=2)
-        print("Audit service response saved to audit_response.json")
+        # Just log the result, don't save it to a file
+        print(f"Audit service response: {json.dumps(audit_result, indent=2)}")
     
     return result
 
