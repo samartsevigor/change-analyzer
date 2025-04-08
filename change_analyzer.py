@@ -295,14 +295,22 @@ def create_project_zip(project_root: Path, ignore_spec: pathspec.PathSpec = None
     # Create a temporary directory for the zip file
     temp_dir = tempfile.mkdtemp()
     
-    # Get repository name from path
-    repo_name = os.path.basename(project_root)
-    if not repo_name or repo_name == '.':
-        # Try to get from environment variable if available
-        if os.environ.get('GITHUB_REPOSITORY'):
-            repo_name = os.environ.get('GITHUB_REPOSITORY').split('/')[-1]
-        else:
-            repo_name = "repository"
+    # Get repository name from environment variable first
+    repo_name = None
+    if os.environ.get('GITHUB_REPOSITORY'):
+        # Extract repo name without owner
+        repo_name = os.environ.get('GITHUB_REPOSITORY').split('/')[-1]
+        print(f"Using repository name from GITHUB_REPOSITORY: {repo_name}")
+    
+    # If not set in environment, try to get from path
+    if not repo_name:
+        repo_name = os.path.basename(project_root)
+        print(f"Using repository name from path: {repo_name}")
+    
+    # If still not valid, use default
+    if not repo_name or repo_name == '.' or repo_name == 'workspace':
+        repo_name = "solidity-project"
+        print(f"Using default repository name: {repo_name}")
     
     zip_filename = f"{repo_name}.zip"
     zip_path = os.path.join(temp_dir, zip_filename)
