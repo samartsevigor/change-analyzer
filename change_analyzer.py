@@ -410,6 +410,13 @@ def send_to_audit_service(zip_path: str, changed_files: List[str], api_token: st
         'params': (None, json.dumps(params_data), 'application/json')
     }
     
+    # Log request details
+    print("Request details:")
+    print(f"  URL: {api_url}")
+    print(f"  Headers: {json.dumps({key: '***' if key == 'Authorization' else value for key, value in headers.items()})}")
+    print(f"  Files: {zip_filename} ({zip_size} bytes)")
+    print(f"  Params: {json.dumps(params_data, indent=2)}")
+    
     try:
         # Send the request with detailed logging
         print(f"Sending POST request to {api_url} with file {zip_filename}")
