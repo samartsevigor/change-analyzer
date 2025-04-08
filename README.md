@@ -44,14 +44,14 @@ jobs:
         with:
           fetch-depth: 0
           
-      - name: Analyze Solidity Changes
-        uses: samartsevigor/change-analyzer@v1.1.1
+      - name: Analyze Solidity Changes & Send to Savant Audit
+        uses: samartsevigor/change-analyzer@v1.2.3
         with:
           base_commit: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.base_commit || github.event_name == 'push' && github.event.before || github.event.pull_request.base.sha }}
           head_commit: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.head_commit || github.event_name == 'push' && github.sha || github.event.pull_request.head.sha }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           scopeignore_path: '.scopeignore'  # Optional, defaults to '.scopeignore'
-          api_token: ${{ secrets.AUDIT_API_TOKEN }}  # API token for the audit service
+          api_token: ${{ secrets.SAVANT_API_TOKEN }}  # API token for the audit service
           api_url: 'https://savant.chat/api/v1/requests/create'
           send_to_audit: ${{ github.event.inputs.send_to_audit || 'true' }}
           
@@ -88,7 +88,7 @@ To run the analysis manually:
 3. Create a new API key
 4. Add the API key as a secret in your GitHub repository:
    - Go to repository Settings → Secrets and variables → Actions
-   - Create a new secret named `AUDIT_API_TOKEN` with your API key
+   - Create a new secret named `SAVANT_API_TOKEN` with your API key
 5. Enable the `send_to_audit` option when running the workflow
 
 ## Inputs
