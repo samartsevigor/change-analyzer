@@ -563,7 +563,7 @@ def analyze_changes(base_commit: str, head_commit: str, project_root: str = ".",
             # Fetch allowed document list for the project
             project_endpoint = f"{api_url}/projects/{project_id}"
             try:
-                proj_resp = requests.post(project_endpoint, headers={"Authorization": f"Bearer {api_token}"})
+                proj_resp = requests.get(project_endpoint, headers={"Authorization": f"Bearer {api_token}"})
                 proj_resp.raise_for_status()
                 allowed_docs = proj_resp.json().get("documents", []) or []
             except Exception as e:
