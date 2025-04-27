@@ -546,11 +546,6 @@ def analyze_changes(base_commit: str, head_commit: str, project_root: str = ".",
             if file_entry["contracts"]:
                 result.append(file_entry)
     
-    # Save analysis results to file
-    with open("changed_declarations.json", "w") as f:
-        json.dump(result, f, indent=2)
-    print("Analysis completed. Results written to changed_declarations.json")
-    
     # Send to audit service if there are changes
     if all_changed_file_paths:
         # Create a complete repository ZIP without filtering
@@ -571,6 +566,17 @@ def analyze_changes(base_commit: str, head_commit: str, project_root: str = ".",
         print(f"Document files for audit ({len(doc_files)}): {doc_files}")
         # Send detailed entries to audit service
         audit_result = send_to_audit_service(zip_path, code_entries, doc_files, api_token, api_url, dry_run_flag, tier, project_id)
+        # Extract and mask 'requestLink' from audit response, then save as artifact
+        request_link = None
+        if isinstance(audit_result, dict) and 'requestLink' in audit_result:
+            request_link = audit_result['requestLink']
+        if request_link:
+            print(f"::add-mask::{request_link}")
+            try:
+                with open("workflow_results.json", "w") as f:
+                    json.dump({"requestLink": request_link}, f)
+            except Exception as e:
+                print(f"WARNING: Failed to write workflow_results.json: {e}")
         # Fail workflow if audit returned an error
         if isinstance(audit_result, dict) and 'error' in audit_result:
             print(f"Audit service returned an error: {audit_result['error']}")

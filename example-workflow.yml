@@ -50,7 +50,7 @@ jobs:
           fetch-depth: 0
       
       - name: Analyze Solidity Changes & Send to Savant.Chat
-        uses: samartsevigor/change-analyzer@v2
+        uses: samartsevigor/change-analyzer@v2.1
         with:
           base_commit: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.base_commit || github.event_name == 'push' && github.event.before || github.event.pull_request.base.sha }}
           head_commit: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.head_commit || github.event_name == 'push' && github.sha || github.event.pull_request.head.sha }}
@@ -60,3 +60,9 @@ jobs:
           dry_run: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run || 'false' }}
           tier: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tier || 'advanced' }}
           project_id: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.project_id || '' }}
+
+      - name: Upload Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: workflow-results
+          path: workflow_results.json 
