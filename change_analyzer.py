@@ -23,7 +23,7 @@ def read_ignore_patterns(project_root: Path, scopeignore_path: str = ".scopeigno
     patterns = []
     
     if ignore_file.exists():
-        patterns.extend(["node_modules/"])
+        patterns.extend(["node_modules/", ".github/"])
         with ignore_file.open("r") as f:
             patterns.extend(line.strip() for line in f if line.strip() and not line.startswith("#"))
         print(f"Using custom ignore patterns from {scopeignore_path}")
@@ -566,17 +566,19 @@ def analyze_changes(base_commit: str, head_commit: str, project_root: str = ".",
         print(f"Document files for audit ({len(doc_files)}): {doc_files}")
         # Send detailed entries to audit service
         audit_result = send_to_audit_service(zip_path, code_entries, doc_files, api_token, api_url, dry_run_flag, tier, project_id)
-        # Extract and mask 'requestLink' from audit response, then save as artifact
+        # Save requestLink to artifact file
         request_link = None
         if isinstance(audit_result, dict) and 'requestLink' in audit_result:
             request_link = audit_result['requestLink']
+        # Write workflow_results.json even if request_link is None
+        try:
+            with open("workflow_results.json", "w") as f:
+                json.dump({"requestLink": request_link}, f)
+        except Exception as e:
+            print(f"WARNING: Failed to write workflow_results.json: {e}")
+        # Mask the link if present
         if request_link:
             print(f"::add-mask::{request_link}")
-            try:
-                with open("workflow_results.json", "w") as f:
-                    json.dump({"requestLink": request_link}, f)
-            except Exception as e:
-                print(f"WARNING: Failed to write workflow_results.json: {e}")
         # Fail workflow if audit returned an error
         if isinstance(audit_result, dict) and 'error' in audit_result:
             print(f"Audit service returned an error: {audit_result['error']}")

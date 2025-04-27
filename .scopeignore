@@ -2,6 +2,7 @@
 
 # Dependencies
 node_modules/
+.github/
 
 # Test files
 [Tt]ests/
