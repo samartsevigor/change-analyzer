@@ -372,10 +372,12 @@ def send_to_audit_service(zip_path: str, code_entries: List[str], doc_files: Lis
         "dryRun": dry_run,
         "tier": tier,
         "selectedFiles": {
-            "code": code_entries,
-            "documents": doc_files
+            "code": code_entries
         }
     }
+    # Include documents only if provided
+    if doc_files:
+        params_data["selectedFiles"]["documents"] = doc_files
     # Include documentation project ID if provided
     if project_id:
         params_data["projectId"] = project_id
@@ -551,9 +553,25 @@ def analyze_changes(base_commit: str, head_commit: str, project_root: str = ".",
         # Create a complete repository ZIP without filtering
         zip_path = create_project_zip(project_root)
         dry_run_flag = dry_run.lower() == "true"
-        # Build lists for audit: method-level code entries and documents
-        doc_files = [f for f in all_changed_file_paths if f.lower().endswith((".txt", ".md", ".pdf", ".tex", ".doc"))]
+        # Build lists for audit: method-level code entries, and documents only if project_id provided
         code_entries: List[str] = []
+        # Compute document files only when project_id is set
+        if project_id:
+            raw_docs = [f for f in all_changed_file_paths if f.lower().endswith((".txt", ".md", ".pdf", ".tex", ".doc"))]
+            # Fetch allowed document list for the project
+            base_api = api_url.split('/ci-cd')[0]
+            project_endpoint = f"{base_api}/projects/{project_id}"
+            try:
+                proj_resp = requests.post(project_endpoint, headers={"Authorization": f"Bearer {api_token}"})
+                proj_resp.raise_for_status()
+                allowed_docs = proj_resp.json().get("documents", []) or []
+            except Exception as e:
+                print(f"WARNING: Failed to fetch project documents: {e}")
+                allowed_docs = []
+            # Filter only allowed documents
+            doc_files = [f for f in raw_docs if os.path.basename(f) in allowed_docs]
+        else:
+            doc_files = []
         # Iterate over analysis result to get changed methods
         for entry in result:
             file_path = entry["file"]
@@ -596,7 +614,7 @@ if __name__ == "__main__":
     project_path = sys.argv[3] if len(sys.argv) > 3 else "."
     scopeignore_path = sys.argv[4] if len(sys.argv) > 4 else ".scopeignore"
     api_token = sys.argv[5] if len(sys.argv) > 5 else None
-    api_url = sys.argv[6] if len(sys.argv) > 6 else "https://savant.chat/api/v1/requests/create"
+    api_url = sys.argv[6] if len(sys.argv) > 6 else "https://savant.chat/api/v1/ci-cd/requests"
     dry_run = sys.argv[7] if len(sys.argv) > 7 else "false"
     tier = sys.argv[8] if len(sys.argv) > 8 else "advanced"
     project_id = sys.argv[9] if len(sys.argv) > 9 else None
