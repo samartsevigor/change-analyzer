@@ -34,7 +34,7 @@ def read_ignore_patterns(project_root: Path, scopeignore_path: str = ".scopeigno
     return pathspec.PathSpec.from_lines("gitwildmatch", patterns)
 
 def get_changed_files(base_commit: str, head_commit: str, project_root: Path) -> List[Tuple[str, str]]:
-    """Gets a list of changed .sol files with their status."""
+    """Gets a list of changed Solidity and document files with their status."""
     cmd = ["git", "diff", "--name-status", base_commit, head_commit]
     output = subprocess.check_output(cmd, cwd=project_root).decode("utf-8")
     changed_files = []
@@ -43,7 +43,8 @@ def get_changed_files(base_commit: str, head_commit: str, project_root: Path) ->
     for line in output.strip().split("\n"):
         if line:
             status, file_path = line.split(maxsplit=1)
-            if file_path.endswith(".sol") and status in ("A", "M"):
+            # Include Solidity and document files
+            if status in ("A", "M") and file_path.lower().endswith((".sol", ".txt", ".md", ".pdf", ".tex", ".doc")):
                 changed_files.append((status, file_path))
     
     print(f"Changed files: {changed_files}")
@@ -336,7 +337,7 @@ def create_project_zip(project_root: Path, ignore_spec: pathspec.PathSpec = None
     print(f"Full repository ZIP created at {zip_path} (including all files)")
     return zip_path
 
-def send_to_audit_service(zip_path: str, changed_files: List[str], api_token: str, api_url: str, dry_run: bool, tier: str, project_id: Optional[str] = None) -> Dict:
+def send_to_audit_service(zip_path: str, code_entries: List[str], doc_files: List[str], api_token: str, api_url: str, dry_run: bool, tier: str, project_id: Optional[str] = None) -> Dict:
     """Sends the project ZIP and changed files to the audit service."""
     if not api_token:
         print("ERROR: API token is required to send the project to the audit service.")
@@ -354,24 +355,24 @@ def send_to_audit_service(zip_path: str, changed_files: List[str], api_token: st
         "Authorization": f"Bearer {api_token}"
     }
     
-    # Ensure we only include .sol files in the selected files
-    sol_files = [f for f in changed_files if f.endswith('.sol')]
-    if not sol_files:
-        print("WARNING: No .sol files found in the changed files list")
-        return {"error": "No .sol files to analyze"}
-    
-    # Log the files we're going to analyze
-    print(f"Solidity files to be analyzed by audit service:")
-    for idx, file in enumerate(sol_files, 1):
-        print(f"  {idx}. {file}")
-    
+    # Log the entries we're going to analyze
+    if code_entries:
+        print("Code entries to be analyzed by audit service:")
+        for idx, entry in enumerate(code_entries, 1):
+            print(f"  {idx}. {entry}")
+    if doc_files:
+        print("Document files to be included in audit:")
+        for idx, file in enumerate(doc_files, 1):
+            print(f"  {idx}. {file}")
+
     # Prepare the params data
     params_data = {
         "ignoreLimits": False,
         "dryRun": dry_run,
         "tier": tier,
         "selectedFiles": {
-            "code": sol_files
+            "code": code_entries,
+            "documents": doc_files
         }
     }
     # Include documentation project ID if provided
@@ -398,11 +399,6 @@ def send_to_audit_service(zip_path: str, changed_files: List[str], api_token: st
         with zipfile.ZipFile(zip_path, 'r') as zipf:
             zip_contents = zipf.namelist()
             print(f"ZIP contains {len(zip_contents)} files")
-            
-            # Check if selected files exist in the ZIP
-            missing_files = [f for f in sol_files if f not in zip_contents]
-            if missing_files:
-                print(f"WARNING: The following selected files are not in the ZIP: {missing_files}")
     except Exception as e:
         print(f"ERROR verifying ZIP contents: {str(e)}")
     
@@ -556,14 +552,26 @@ def analyze_changes(base_commit: str, head_commit: str, project_root: str = ".",
     
     # Send to audit service if there are changes
     if all_changed_file_paths:
-        print(f"Sending changes to audit service: {len(all_changed_file_paths)} files")
         # Create a complete repository ZIP without filtering
         zip_path = create_project_zip(project_root)
-        # Send to audit service with the list of changed files
         dry_run_flag = dry_run.lower() == "true"
-        audit_result = send_to_audit_service(zip_path, all_changed_file_paths, api_token, api_url, dry_run_flag, tier, project_id)
+        # Build lists for audit: method-level code entries and documents
+        doc_files = [f for f in all_changed_file_paths if f.lower().endswith((".txt", ".md", ".pdf", ".tex", ".doc"))]
+        code_entries: List[str] = []
+        # Iterate over analysis result to get changed methods
+        for entry in result:
+            file_path = entry["file"]
+            for contract in entry.get("contracts", []):
+                name = contract.get("name")
+                for method in contract.get("methods", []):
+                    code_entries.append(f"{file_path}:{name}.{method}")
+        # Log summary
+        print(f"Code entries for audit ({len(code_entries)}): {code_entries}")
+        print(f"Document files for audit ({len(doc_files)}): {doc_files}")
+        # Send detailed entries to audit service
+        audit_result = send_to_audit_service(zip_path, code_entries, doc_files, api_token, api_url, dry_run_flag, tier, project_id)
         # Just log the result, don't save it to a file
-        # print(f"Audit service response: {json.dumps(audit_result, indent=2)}")
+        print(f"Audit service response: {json.dumps(audit_result, indent=2)}")
     
     return result
 

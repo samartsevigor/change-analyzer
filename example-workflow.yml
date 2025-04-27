@@ -11,7 +11,7 @@ on:
         required: true
         default: 'HEAD'
       dry_run:
-        description: 'Whether to perform a dry run (do not create real audit)'
+        description: 'Dry Run (only return estimates without creating request)'
         required: false
         default: 'false'
         type: boolean
@@ -52,10 +52,8 @@ jobs:
       - name: Analyze Solidity Changes & Send to Savant.Chat
         uses: samartsevigor/change-analyzer@v1.2.3
         with:
-          # For manual trigger, use the provided inputs
           base_commit: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.base_commit || github.event_name == 'push' && github.event.before || github.event.pull_request.base.sha }}
           head_commit: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.head_commit || github.event_name == 'push' && github.sha || github.event.pull_request.head.sha }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
           scopeignore_path: '.scopeignore'  # Optional, defaults to '.scopeignore'
           api_token: ${{ secrets.SAVANT_API_TOKEN }}  # API token for the audit service
           api_url: 'https://savant.chat/api/v1/requests/create'
