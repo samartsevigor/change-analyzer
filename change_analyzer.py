@@ -571,6 +571,8 @@ def analyze_changes(base_commit: str, head_commit: str, project_root: str = ".",
         print(f"Document files for audit ({len(doc_files)}): {doc_files}")
         # Send detailed entries to audit service
         audit_result = send_to_audit_service(zip_path, code_entries, doc_files, api_token, api_url, dry_run_flag, tier, project_id)
+        # Emit audit response as GitHub Action output
+        print(f"::set-output name=audit_response::{json.dumps(audit_result)}")
         # Fail workflow if audit returned an error
         if isinstance(audit_result, dict) and 'error' in audit_result:
             print(f"Audit service returned an error: {audit_result['error']}")
