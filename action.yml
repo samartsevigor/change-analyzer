@@ -24,7 +24,7 @@ inputs:
   api_url:
     description: 'URL for the audit service API endpoint'
     required: false
-    default: 'https://savant.chat/api/v1/requests/create'
+    default: 'https://savant.chat/api/v1'
   dry_run:
     description: 'Whether to perform a dry run (do not create real audit)'
     required: false

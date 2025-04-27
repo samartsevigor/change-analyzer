@@ -349,7 +349,9 @@ def send_to_audit_service(zip_path: str, code_entries: List[str], doc_files: Lis
         print("4. Create a new API key")
         return {"error": "API token is required"}
     
-    print(f"Sending project to audit service at {api_url}...")
+    audit_api_url = f"{api_url}/ci-cd/requests"
+    
+    print(f"Sending project to audit service at {audit_api_url}...")
     
     # Prepare request data
     headers = {
@@ -413,15 +415,15 @@ def send_to_audit_service(zip_path: str, code_entries: List[str], doc_files: Lis
     
     # Log request details
     print("Request details:")
-    print(f"  URL: {api_url}")
+    print(f"  URL: {audit_api_url}")
     print(f"  Headers: {json.dumps({key: '***' if key == 'Authorization' else value for key, value in headers.items()})}")
     print(f"  Files: {zip_filename} ({zip_size} bytes)")
     print(f"  Params: {json.dumps(params_data, indent=2)}")
     
     try:
         # Send the request with detailed logging
-        print(f"Sending POST request to {api_url} with file {zip_filename}")
-        response = requests.post(api_url, headers=headers, files=files)
+        print(f"Sending POST request to {audit_api_url} with file {zip_filename}")
+        response = requests.post(audit_api_url, headers=headers, files=files)
         
         # Print response status and headers
         print(f"Response status code: {response.status_code}")
@@ -559,8 +561,7 @@ def analyze_changes(base_commit: str, head_commit: str, project_root: str = ".",
         if project_id:
             raw_docs = [f for f in all_changed_file_paths if f.lower().endswith((".txt", ".md", ".pdf", ".tex", ".doc"))]
             # Fetch allowed document list for the project
-            base_api = api_url.split('/ci-cd')[0]
-            project_endpoint = f"{base_api}/projects/{project_id}"
+            project_endpoint = f"{api_url}/projects/{project_id}"
             try:
                 proj_resp = requests.post(project_endpoint, headers={"Authorization": f"Bearer {api_token}"})
                 proj_resp.raise_for_status()
@@ -614,7 +615,7 @@ if __name__ == "__main__":
     project_path = sys.argv[3] if len(sys.argv) > 3 else "."
     scopeignore_path = sys.argv[4] if len(sys.argv) > 4 else ".scopeignore"
     api_token = sys.argv[5] if len(sys.argv) > 5 else None
-    api_url = sys.argv[6] if len(sys.argv) > 6 else "https://savant.chat/api/v1/ci-cd/requests"
+    api_url = sys.argv[6] if len(sys.argv) > 6 else "https://savant.chat/api/v1"
     dry_run = sys.argv[7] if len(sys.argv) > 7 else "false"
     tier = sys.argv[8] if len(sys.argv) > 8 else "advanced"
     project_id = sys.argv[9] if len(sys.argv) > 9 else None
