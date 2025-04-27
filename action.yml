@@ -25,10 +25,17 @@ inputs:
     description: 'URL for the audit service API endpoint'
     required: false
     default: 'https://savant.chat/api/v1/requests/create'
-  send_to_audit:
-    description: 'Whether to send the analysis to the audit service'
+  dry_run:
+    description: 'Whether to perform a dry run (do not create real audit)'
     required: false
-    default: 'true'
+    default: 'false'
+  tier:
+    description: 'Tier'
+    required: false
+    default: 'advanced'
+  project_id:
+    description: 'Documentation project ID'
+    required: false
 outputs:
   changes_file:
     description: 'Path to the JSON file with analyzed changes'
@@ -45,4 +52,6 @@ runs:
     - ${{ inputs.scopeignore_path }}
     - ${{ inputs.api_token }}
     - ${{ inputs.api_url }}
-    - ${{ inputs.send_to_audit }} 
+    - ${{ inputs.dry_run }}
+    - ${{ inputs.tier }}
+    - ${{ inputs.project_id }} 

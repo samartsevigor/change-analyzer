@@ -8,7 +8,9 @@ GITHUB_TOKEN=${INPUT_GITHUB_TOKEN}
 SCOPEIGNORE_PATH=${INPUT_SCOPEIGNORE_PATH:-".scopeignore"}
 API_TOKEN=${INPUT_API_TOKEN}
 API_URL=${INPUT_API_URL:-"https://savant.chat/api/v1/requests/create"}
-SEND_TO_AUDIT=${INPUT_SEND_TO_AUDIT:-"true"}
+DRY_RUN=${INPUT_DRY_RUN:-"false"}
+TIER=${INPUT_TIER:-"advanced"}
+PROJECT_ID=${INPUT_PROJECT_ID:-""}
 
 # Debug output
 echo "Base commit: $BASE_COMMIT"
@@ -16,7 +18,9 @@ echo "Head commit: $HEAD_COMMIT"
 echo "Working directory: $(pwd)"
 echo "GitHub repository: $GITHUB_REPO"
 echo "Scopeignore path: $SCOPEIGNORE_PATH"
-echo "Send to audit service: $SEND_TO_AUDIT"
+echo "Dry run: $DRY_RUN"
+echo "Tier: $TIER"
+echo "Project ID: $PROJECT_ID"
 echo "API URL: $API_URL"
 
 # Ensure we're in the workspace
@@ -42,7 +46,7 @@ else
 fi
 
 # Run analyzer with proper workspace path and scopeignore path
-python /change_analyzer.py "$BASE_COMMIT" "$HEAD_COMMIT" "/github/workspace" "$SCOPEIGNORE_PATH" "$API_TOKEN" "$API_URL" "$SEND_TO_AUDIT"
+python /change_analyzer.py "$BASE_COMMIT" "$HEAD_COMMIT" "/github/workspace" "$SCOPEIGNORE_PATH" "$API_TOKEN" "$API_URL" "$DRY_RUN" "$TIER" "$PROJECT_ID"
 
 # Check execution status
 if [ $? -eq 0 ]; then

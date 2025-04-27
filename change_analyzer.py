@@ -1,16 +1,14 @@
 import subprocess
 import json
 from pathlib import Path
-from typing import List, Tuple, Dict, Optional #, Set
+from typing import List, Tuple, Dict, Optional
 import pathspec
 import tree_sitter
 import tree_sitter_solidity
-# import difflib
 import zipfile
 import os
 import tempfile
 import requests
-# import shutil
 
 # Initialize language and parser
 SOLIDITY_LANGUAGE = tree_sitter.Language(tree_sitter_solidity.language(), "solidity")
@@ -338,7 +336,7 @@ def create_project_zip(project_root: Path, ignore_spec: pathspec.PathSpec = None
     print(f"Full repository ZIP created at {zip_path} (including all files)")
     return zip_path
 
-def send_to_audit_service(zip_path: str, changed_files: List[str], api_token: str, api_url: str) -> Dict:
+def send_to_audit_service(zip_path: str, changed_files: List[str], api_token: str, api_url: str, dry_run: bool, tier: str, project_id: Optional[str] = None) -> Dict:
     """Sends the project ZIP and changed files to the audit service."""
     if not api_token:
         print("ERROR: API token is required to send the project to the audit service.")
@@ -370,11 +368,15 @@ def send_to_audit_service(zip_path: str, changed_files: List[str], api_token: st
     # Prepare the params data
     params_data = {
         "ignoreLimits": False,
-        "dryRun": False,
+        "dryRun": dry_run,
+        "tier": tier,
         "selectedFiles": {
             "code": sol_files
         }
     }
+    # Include documentation project ID if provided
+    if project_id:
+        params_data["projectId"] = project_id
     
     print(f"Selected files parameter: {json.dumps(params_data['selectedFiles'])}")
     
@@ -467,7 +469,7 @@ def send_to_audit_service(zip_path: str, changed_files: List[str], api_token: st
             print(f"WARNING: Failed to clean up temporary files: {str(cleanup_error)}")
 
 def analyze_changes(base_commit: str, head_commit: str, project_root: str = ".", scopeignore_path: str = ".scopeignore",
-                   api_token: str = None, api_url: str = None, send_to_audit: str = "false") -> List[Dict]:
+                   api_token: str = None, api_url: str = None, dry_run: str = "false", tier: str = "advanced", project_id: Optional[str] = None) -> List[Dict]:
     """Analyzes changes between commits and returns a list of change objects."""
     project_root = Path(project_root).resolve()
     ignore_spec = read_ignore_patterns(project_root, scopeignore_path)
@@ -552,22 +554,23 @@ def analyze_changes(base_commit: str, head_commit: str, project_root: str = ".",
         json.dump(result, f, indent=2)
     print("Analysis completed. Results written to changed_declarations.json")
     
-    # Send to audit service if enabled
-    if send_to_audit.lower() == "true" and all_changed_file_paths:
+    # Send to audit service if there are changes
+    if all_changed_file_paths:
         print(f"Sending changes to audit service: {len(all_changed_file_paths)} files")
         # Create a complete repository ZIP without filtering
         zip_path = create_project_zip(project_root)
         # Send to audit service with the list of changed files
-        audit_result = send_to_audit_service(zip_path, all_changed_file_paths, api_token, api_url)
+        dry_run_flag = dry_run.lower() == "true"
+        audit_result = send_to_audit_service(zip_path, all_changed_file_paths, api_token, api_url, dry_run_flag, tier, project_id)
         # Just log the result, don't save it to a file
-        print(f"Audit service response: {json.dumps(audit_result, indent=2)}")
+        # print(f"Audit service response: {json.dumps(audit_result, indent=2)}")
     
     return result
 
 if __name__ == "__main__":
     import sys
     if len(sys.argv) < 3:
-        print("Usage: python change_analyzer.py <base_commit> <head_commit> [project_path] [scopeignore_path] [api_token] [api_url] [send_to_audit]")
+        print("Usage: python change_analyzer.py <base_commit> <head_commit> [project_path] [scopeignore_path] [api_token] [api_url] [dry_run] [tier] [project_id]")
         sys.exit(1)
     
     base_commit, head_commit = sys.argv[1], sys.argv[2]
@@ -575,20 +578,22 @@ if __name__ == "__main__":
     scopeignore_path = sys.argv[4] if len(sys.argv) > 4 else ".scopeignore"
     api_token = sys.argv[5] if len(sys.argv) > 5 else None
     api_url = sys.argv[6] if len(sys.argv) > 6 else "https://savant.chat/api/v1/requests/create"
-    send_to_audit = sys.argv[7] if len(sys.argv) > 7 else "false"
+    dry_run = sys.argv[7] if len(sys.argv) > 7 else "false"
+    tier = sys.argv[8] if len(sys.argv) > 8 else "advanced"
+    project_id = sys.argv[9] if len(sys.argv) > 9 else None
     
     print(f"Analyzing changes between {base_commit} and {head_commit} in {project_path}")
     print(f"Using scopeignore from: {scopeignore_path}")
     
-    if send_to_audit.lower() == "true":
-        if not api_token:
-            print("ERROR: API token is required to send the project to the audit service.")
-            print("Please get an API token from https://savant.chat:")
-            print("1. Login to your account")
-            print("2. Go to Settings")
-            print("3. Navigate to API Keys tab")
-            print("4. Create a new API key")
-            sys.exit(1)
-        print(f"Will send changes to audit service at {api_url}")
+    # Ensure API token is provided
+    if not api_token:
+        print("ERROR: API token is required to send the project to the audit service.")
+        print("Please get an API token from https://savant.chat:")
+        print("1. Login to your account")
+        print("2. Go to Settings")
+        print("3. Navigate to API Keys tab")
+        print("4. Create a new API key")
+        sys.exit(1)
+    print(f"Will send changes to audit service at {api_url} (dry run: {dry_run})")
     
-    analyze_changes(base_commit, head_commit, project_path, scopeignore_path, api_token, api_url, send_to_audit)
+    analyze_changes(base_commit, head_commit, project_path, scopeignore_path, api_token, api_url, dry_run, tier, project_id)

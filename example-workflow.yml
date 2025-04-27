@@ -10,11 +10,23 @@ on:
         description: 'Head commit SHA for comparison'
         required: true
         default: 'HEAD'
-      send_to_audit:
-        description: 'Send changes to audit service'
+      dry_run:
+        description: 'Whether to perform a dry run (do not create real audit)'
         required: false
-        default: 'true'
+        default: 'false'
         type: boolean
+      tier:
+        description: 'Audit tier'
+        required: false
+        default: 'advanced'
+        type: choice
+        options:
+          - advanced
+          - lite
+      project_id:
+        description: 'Documentation project ID'
+        required: false
+        default: ''
 
   # Automatically trigger on pull requests
   # pull_request:
@@ -37,7 +49,7 @@ jobs:
         with:
           fetch-depth: 0
       
-      - name: Analyze Solidity Changes & Send to Savant Audit
+      - name: Analyze Solidity Changes & Send to Savant.Chat
         uses: samartsevigor/change-analyzer@v1.2.3
         with:
           # For manual trigger, use the provided inputs
@@ -47,7 +59,9 @@ jobs:
           scopeignore_path: '.scopeignore'  # Optional, defaults to '.scopeignore'
           api_token: ${{ secrets.SAVANT_API_TOKEN }}  # API token for the audit service
           api_url: 'https://savant.chat/api/v1/requests/create'
-          send_to_audit: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.send_to_audit || 'true' }}
+          dry_run: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run || 'false' }}
+          tier: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tier || 'advanced' }}
+          project_id: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.project_id || '' }}
       
       - name: Upload Analysis Results
         uses: actions/upload-artifact@v4
