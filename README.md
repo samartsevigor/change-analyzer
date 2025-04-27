@@ -56,13 +56,13 @@ jobs:
           fetch-depth: 0
       
       - name: Analyze Solidity Changes & Send to Savant.Chat
-        uses: samartsevigor/change-analyzer@v2.1
+        uses: samartsevigor/change-analyzer@v2.2
         with:
           base_commit: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.base_commit || github.event_name == 'push' && github.event.before || github.event.pull_request.base.sha }}
           head_commit: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.head_commit || github.event_name == 'push' && github.sha || github.event.pull_request.head.sha }}
           scopeignore_path: '.scopeignore'  # Optional, defaults to '.scopeignore'
           api_token: ${{ secrets.SAVANT_API_TOKEN }}  # API token for the audit service
-          api_url: 'https://savant.chat/api/v1/requests/create'
+          api_url: 'https://dev.savant.chat/api/v1/requests/create'
           dry_run: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run || 'false' }}
           tier: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tier || 'advanced' }}
           project_id: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.project_id || '' }}
