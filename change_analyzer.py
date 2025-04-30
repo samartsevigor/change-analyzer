@@ -11,6 +11,10 @@ import tempfile
 import requests
 import sys
 
+# File extension constants
+CODE_EXTENSIONS = (".sol",)
+DOCUMENTATION_EXTENSIONS = (".txt", ".md", ".pdf", ".html")
+
 # Initialize language and parser
 SOLIDITY_LANGUAGE = tree_sitter.Language(tree_sitter_solidity.language(), "solidity")
 PARSER = tree_sitter.Parser()
@@ -44,8 +48,8 @@ def get_changed_files(base_commit: str, head_commit: str, project_root: Path) ->
     for line in output.strip().split("\n"):
         if line:
             status, file_path = line.split(maxsplit=1)
-            # Include Solidity and document files
-            if status in ("A", "M") and file_path.lower().endswith((".sol", ".txt", ".md", ".pdf", ".tex", ".doc")):
+            # Include Solidity and document files based on constants
+            if status in ("A", "M") and file_path.lower().endswith(CODE_EXTENSIONS):
                 changed_files.append((status, file_path))
     
     print(f"Changed files: {changed_files}")
@@ -555,24 +559,23 @@ def analyze_changes(base_commit: str, head_commit: str, project_root: str = ".",
         # Create a complete repository ZIP without filtering
         zip_path = create_project_zip(project_root)
         dry_run_flag = dry_run.lower() == "true"
-        # Build lists for audit: method-level code entries, and documents only if project_id provided
+        # Build lists for audit: method-level code entries
         code_entries: List[str] = []
-        # Compute document files only when project_id is set
-        if project_id:
-            raw_docs = [f for f in all_changed_file_paths if f.lower().endswith((".txt", ".md", ".pdf", ".tex", ".doc"))]
-            # Fetch allowed document list for the project
-            project_endpoint = f"{api_url}/projects/{project_id}"
-            try:
-                proj_resp = requests.get(project_endpoint, headers={"Authorization": f"Bearer {api_token}"})
-                proj_resp.raise_for_status()
-                allowed_docs = proj_resp.json().get("documents", []) or []
-            except Exception as e:
-                print(f"WARNING: Failed to fetch project documents: {e}")
-                allowed_docs = []
-            # Filter only allowed documents
-            doc_files = [f for f in raw_docs if os.path.basename(f) in allowed_docs]
-        else:
-            doc_files = []
+        # Determine documentation files from .savantdocs config (gitignore syntax)
+        doc_files: List[str] = []
+        docs_config = project_root / ".savantdocs"
+        if docs_config.exists():
+            with docs_config.open("r") as f:
+                patterns = [line.strip() for line in f if line.strip() and not line.startswith("#")]
+            doc_spec = pathspec.PathSpec.from_lines("gitwildmatch", patterns)
+            # Walk project to collect matching doc files
+            for root, dirs, files in os.walk(project_root):
+                for file in files:
+                    if file.lower().endswith(DOCUMENTATION_EXTENSIONS):
+                        rel_path = os.path.relpath(os.path.join(root, file), project_root)
+                        if doc_spec.match_file(rel_path):
+                            doc_files.append(rel_path)
+        # Proceed to collect changed methods for code entries
         # Iterate over analysis result to get changed methods
         for entry in result:
             file_path = entry["file"]
