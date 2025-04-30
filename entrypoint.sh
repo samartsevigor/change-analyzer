@@ -5,9 +5,9 @@ BASE_COMMIT=${INPUT_BASE_COMMIT}
 HEAD_COMMIT=${INPUT_HEAD_COMMIT}
 GITHUB_REPO=${GITHUB_REPOSITORY}
 GITHUB_TOKEN=${INPUT_GITHUB_TOKEN}
-SCOPEIGNORE_PATH=${INPUT_SCOPEIGNORE_PATH:-".scopeignore"}
+SCOPEIGNORE_PATH=${INPUT_SCOPEIGNORE_PATH:-".savantignore"}
 API_TOKEN=${INPUT_API_TOKEN}
-API_URL=${INPUT_API_URL:-"https://savant.chat/api/v1/requests/create"}
+API_URL=${INPUT_API_URL:-"https://savant.chat/api/v1"}
 DRY_RUN=${INPUT_DRY_RUN:-"false"}
 TIER=${INPUT_TIER:-"advanced"}
 PROJECT_ID=${INPUT_PROJECT_ID:-""}
@@ -37,15 +37,15 @@ git config --list || echo "Git not configured"
 # Configure git if working with remote
 git config --global --add safe.directory /github/workspace
 
-# Check if .scopeignore exists
+# Check if .savantignore exists
 if [ -f "$SCOPEIGNORE_PATH" ]; then
-  echo "Found .scopeignore file at $SCOPEIGNORE_PATH:"
+  echo "Found .savantignore file at $SCOPEIGNORE_PATH:"
   cat "$SCOPEIGNORE_PATH"
 else
-  echo "No .scopeignore file found at $SCOPEIGNORE_PATH, will use default patterns"
+  echo "No .savantignore file found at $SCOPEIGNORE_PATH, will use default patterns"
 fi
 
-# Run analyzer with proper workspace path and scopeignore path
+# Run analyzer with proper workspace path and .savantignore path
 python /change_analyzer.py "$BASE_COMMIT" "$HEAD_COMMIT" "/github/workspace" "$SCOPEIGNORE_PATH" "$API_TOKEN" "$API_URL" "$DRY_RUN" "$TIER" "$PROJECT_ID"
 
 # Check execution status

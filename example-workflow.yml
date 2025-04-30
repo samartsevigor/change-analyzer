@@ -1,4 +1,4 @@
-name: Smart Contract Change Analyzer
+name: Savant Smart Contract Analyzer
 on:
   # Manual trigger with inputs
   workflow_dispatch:
@@ -50,13 +50,13 @@ jobs:
           fetch-depth: 0
       
       - name: Analyze Solidity Changes & Send to Savant.Chat
-        uses: samartsevigor/change-analyzer@v2.4
+        uses: auditdbio/savant-smart-contract-analyzer@v1.1
         with:
           base_commit: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.base_commit || github.event_name == 'push' && github.event.before || github.event.pull_request.base.sha }}
           head_commit: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.head_commit || github.event_name == 'push' && github.sha || github.event.pull_request.head.sha }}
-          scopeignore_path: '.scopeignore'  # Optional, defaults to '.scopeignore'
-          api_token: ${{ secrets.SAVANT_API_TOKEN }}  # API token for the audit service
-          api_url: 'https://dev.savant.chat/api/v1'
+          scopeignore_path: '.savantignore'  # Optional, defaults to '.savantignore'
+          api_token: ${{ secrets.SAVANT_API_TOKEN }}
+          api_url: 'https://savant.chat/api/v1'
           dry_run: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run || 'false' }}
           tier: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tier || 'advanced' }}
           project_id: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.project_id || '' }}

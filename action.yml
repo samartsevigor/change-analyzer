@@ -15,9 +15,9 @@ inputs:
     required: false
     default: ${{ github.token }}
   scopeignore_path:
-    description: 'Path to .scopeignore file in repository (relative to repo root)'
+    description: 'Path to .savantignore file in repository (relative to repo root)'
     required: false
-    default: '.scopeignore'
+    default: '.savantignore'
   api_token:
     description: 'API token for the audit service. Get it from https://savant.chat (Profile -> Settings -> API Keys)'
     required: false

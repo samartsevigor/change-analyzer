@@ -16,8 +16,8 @@ SOLIDITY_LANGUAGE = tree_sitter.Language(tree_sitter_solidity.language(), "solid
 PARSER = tree_sitter.Parser()
 PARSER.set_language(SOLIDITY_LANGUAGE)
 
-def read_ignore_patterns(project_root: Path, scopeignore_path: str = ".scopeignore") -> pathspec.PathSpec:
-    """Reads ignore patterns from .scopeignore and adds default ones."""
+def read_ignore_patterns(project_root: Path, scopeignore_path: str = ".savantignore") -> pathspec.PathSpec:
+    """Reads ignore patterns from .savantignore and adds default ones."""
     default_patterns = ["node_modules/", "[Tt]ests/", "[Tt]est/", "[Mm]ocks/", "[Mm]ock/", "[Ii]nterfaces/", "[Ii]nterface/", "*[Ii]nterface.sol", "*[Tt]est.sol", "*[Mm]ock.sol"]
     ignore_file = project_root / scopeignore_path
     patterns = []
@@ -469,7 +469,7 @@ def send_to_audit_service(zip_path: str, code_entries: List[str], doc_files: Lis
         except Exception as cleanup_error:
             print(f"WARNING: Failed to clean up temporary files: {str(cleanup_error)}")
 
-def analyze_changes(base_commit: str, head_commit: str, project_root: str = ".", scopeignore_path: str = ".scopeignore",
+def analyze_changes(base_commit: str, head_commit: str, project_root: str = ".", scopeignore_path: str = ".savantignore",
                    api_token: str = None, api_url: str = None, dry_run: str = "false", tier: str = "advanced", project_id: Optional[str] = None) -> List[Dict]:
     """Analyzes changes between commits and returns a list of change objects."""
     project_root = Path(project_root).resolve()
@@ -613,7 +613,7 @@ if __name__ == "__main__":
     
     base_commit, head_commit = sys.argv[1], sys.argv[2]
     project_path = sys.argv[3] if len(sys.argv) > 3 else "."
-    scopeignore_path = sys.argv[4] if len(sys.argv) > 4 else ".scopeignore"
+    scopeignore_path = sys.argv[4] if len(sys.argv) > 4 else ".savantignore"
     api_token = sys.argv[5] if len(sys.argv) > 5 else None
     api_url = sys.argv[6] if len(sys.argv) > 6 else "https://savant.chat/api/v1"
     dry_run = sys.argv[7] if len(sys.argv) > 7 else "false"

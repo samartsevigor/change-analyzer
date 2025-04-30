@@ -1,24 +1,23 @@
-# Smart Contract Change Analyzer
+# Savant Smart Contract Change Analyzer
 
-This GitHub Action analyzes Solidity smart contract changes between commits to identify which contracts and methods have been modified. It helps in tracking the scope of changes for security reviews and audits.
+This workflow helps you spot and audit Solidity changes by comparing two commit SHAs and sending the diff to Savant.Chat.
 
 ## Features
 
 - Identifies changed Solidity files between two commits
 - Detects specific contracts and methods that have been modified
-- Supports custom ignore patterns via `.scopeignore` file
-- Integration with Savant.chat audit service to submit changes for professional review
+- Supports custom ignore patterns via `.savantignore` file
+- Integration with Savant.chat
 
 ## Usage
 
-Add this GitHub Action to your workflow to analyze changes in Solidity files. You can trigger it manually or automatically with pull requests.
+### 1. Add the Workflow file
 
-### Manual Trigger Example
+Create (or update) `.github/workflows/savant-smart-contract-analyzer.yml`
 
 ```yaml
-name: Smart Contract Change Analyzer
+name: Savant Smart Contract Analyzer
 on:
-  # Manual trigger with inputs
   workflow_dispatch:
     inputs:
       base_commit:
@@ -56,13 +55,13 @@ jobs:
           fetch-depth: 0
       
       - name: Analyze Solidity Changes & Send to Savant.Chat
-        uses: samartsevigor/change-analyzer@v2.4
+        uses: auditdbio/savant-smart-contract-analyzer@v1.1
         with:
           base_commit: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.base_commit || github.event_name == 'push' && github.event.before || github.event.pull_request.base.sha }}
           head_commit: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.head_commit || github.event_name == 'push' && github.sha || github.event.pull_request.head.sha }}
-          scopeignore_path: '.scopeignore'  # Optional, defaults to '.scopeignore'
-          api_token: ${{ secrets.SAVANT_API_TOKEN }}  # API token for the audit service
-          api_url: 'https://dev.savant.chat/api/v1'
+          scopeignore_path: '.savantignore'
+          api_token: ${{ secrets.SAVANT_API_TOKEN }}
+          api_url: 'https://savant.chat/api/v1'
           dry_run: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run || 'false' }}
           tier: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tier || 'advanced' }}
           project_id: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.project_id || '' }}
@@ -74,60 +73,67 @@ jobs:
           path: workflow_results.json 
 ```
 
-## How to Trigger Manually
+### 2. Set Up API Credentials
 
-To run the analysis manually:
-
-1. Go to your repository on GitHub
-2. Navigate to the "Actions" tab
-3. Select the "Smart Contract Change Analyzer" workflow from the left sidebar
-4. Click the "Run workflow" button
-5. Enter the base commit SHA and head commit SHA
-6. Optionally, enable "Dry Run"
-7. Select audit tier.
-8. Optionally, add documentation project ID.
-9. Click "Run workflow"
-
-## Savant.Chat AI Audit Service Integration
-
-1. Go to [Savant.chat](https://savant.chat) and create an account
-2. Navigate to Dashboard → Settings → API Keys
+1. Go to [Savant.chat](https://savant.chat) and create an account.
+2. Navigate to Dashboard → CI/CD → API Keys.
 3. Create a new API key
 4. Add the API key as a secret in your GitHub repository:
    - Go to repository Settings → Secrets and variables → Actions
-   - Create a new secret named `SAVANT_API_TOKEN` with your API key
-5. Optionally, add documentation project ID from CI/CD.
+   - Add a new secret named `SAVANT_API_TOKEN` containing your Savant API key.
 
-## Inputs
+### 3. Configure Triggers
 
-| Input | Description | Required | Default |
-|-------|-------------|----------|---------|
-| `base_commit` | Base commit SHA for comparison | Yes | - |
-| `head_commit` | Head commit SHA for comparison | Yes | - |
-| `scopeignore_path` | Path to `.scopeignore` file | No | `.scopeignore` |
-| `api_token` | API token for the audit service | No | - |
-| `api_url` | URL for the audit service API | No | `https://savant.chat/api/v1` |
-| `dry_run` | Return estimates without creating request | No | `false` |
-| `tier` | Tier | No | `advanced` |
-| `project_id` | Documentation project ID | No | - |
+- **Manual Run**  
+  Use the _Actions_ tab → select **Savant Smart Contract Analyzer** → **Run workflow**, then fill in:
+  - **base_commit**: SHA to compare from
+  - **head_commit**: SHA to compare to (defaults to `HEAD`)
+  - **dry_run**: `true`/`false` (skips request creation if true)
+  - **tier**: `advanced` or `lite`
+  - **project_id**: your documentation project identifier (optional)
 
-## Customizing Ignored Files
+- **Automatic Run**  
+  Uncomment one of the trigger blocks in the YAML:
+  ```yaml
+  # pull_request:
+  #   branches: [ master, main ]
+  # push:
+  #   branches: [ master, main ]
+  ```
+  Then commits or PRs on those branches will invoke the analyzer.
 
-Create a `.scopeignore` file in your repository to customize which files are ignored during analysis. The file follows a gitignore-like pattern format:
+### 4. Customizing Ignored Files (Optional)
+
+Create a `.savantignore` file in your repository to customize which files are ignored during analysis. The file follows a gitignore-like pattern format:
 
 ```
-# Example .scopeignore
+# Example .savantignore
 node_modules/
 [Tt]ests/
 [Mm]ocks/
 ```
 
-If no `.scopeignore` file is present, the default patterns will be used:
+If no `.savantignore` file is present, the default patterns will be used:
 
 - `node_modules/`
 - `[Tt]ests/`, `[Tt]est/`, `*[Tt]est.sol`
 - `[Mm]ocks/`, `[Mm]ock/`, `*[Mm]ock.sol`
 - `[Ii]nterfaces/`, `[Ii]nterface/`, `*[Ii]nterface.sol`
+
+---
+
+## Action Inputs
+
+| Input | Description | Required | Default |
+|-------|-------------|----------|---------|
+| `base_commit` | Base commit SHA for comparison | Yes | - |
+| `head_commit` | Head commit SHA for comparison | Yes | - |
+| `scopeignore_path` | Path to `.savantignore` file | No | `.savantignore` |
+| `api_token` | API token for the audit service | No | - |
+| `api_url` | URL for the audit service API | No | `https://savant.chat/api/v1` |
+| `dry_run` | Return estimates without creating request | No | `false` |
+| `tier` | Tier | No | `advanced` |
+| `project_id` | Documentation project ID | No | - |
 
 ## License
 
