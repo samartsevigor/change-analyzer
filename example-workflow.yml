@@ -11,7 +11,7 @@ on:
         required: true
         default: 'HEAD'
       dry_run:
-        description: 'Dry Run (only return estimates without creating request)'
+        description: 'Whether to perform a dry run (do not create real audit)'
         required: false
         default: 'false'
         type: boolean

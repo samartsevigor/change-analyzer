@@ -51,11 +51,13 @@ runs:
         PROJECT_ID="$INPUT_PROJECT_ID"
         echo "Sending request to backend at $API_URL"
         PAYLOAD="{\"repo\":\"$REPO\",\"base_commit\":\"$BASE_COMMIT\",\"head_commit\":\"$HEAD_COMMIT\",\"github_token\":\"$GITHUB_TOKEN\",\"api_token\":\"$API_TOKEN\",\"dry_run\":$DRY_RUN,\"tier\":\"$TIER\",\"project_id\":\"$PROJECT_ID\"}"
-        RESPONSE=$(curl -s -X POST "$API_URL" \
+        echo "Request payload: $PAYLOAD"
+        RESPONSE=$(curl -sS -i -X POST "$API_URL" \
           -H "Authorization: Bearer $API_TOKEN" \
           -H "Content-Type: application/json" \
-          -d "$PAYLOAD")
-        echo "Response: $RESPONSE"
+          -d "$PAYLOAD") || true
+        echo "Full response (headers + body):"
+        echo "$RESPONSE"
         AUDIT_URL=$(echo "$RESPONSE" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("audit_url",""))')
         if [ -z "$AUDIT_URL" ]; then
           echo "Error: audit_url not found in response"
