@@ -21,6 +21,7 @@ on:
         default: 'advanced'
         type: choice
         options:
+          - pro
           - advanced
           - lite
       project_id:
