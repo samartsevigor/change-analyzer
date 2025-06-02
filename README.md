@@ -65,7 +65,7 @@ PAT=<your-PAT>
 curl -X POST \
   -H "Authorization: Bearer $PAT" \
   -H "Accept: application/vnd.github.v3+json" \
-  https://api.github.com/repos/<owner>/<repo>/actions/workflows/analyze.yml/dispatches \
+  https://api.github.com/repos/<owner>/<repo>/actions/workflows/savant-smart-contract-analyzer.yml/dispatches \
   -d '{
     "ref": "main",
     "inputs": {
