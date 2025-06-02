@@ -52,17 +52,26 @@ runs:
         echo "Sending request to backend at $API_URL"
         PAYLOAD="{\"repo\":\"$REPO\",\"base_commit\":\"$BASE_COMMIT\",\"head_commit\":\"$HEAD_COMMIT\",\"github_token\":\"$GITHUB_TOKEN\",\"api_token\":\"$API_TOKEN\",\"dry_run\":$DRY_RUN,\"tier\":\"$TIER\",\"project_id\":\"$PROJECT_ID\"}"
         echo "Request payload: $PAYLOAD"
-        RESPONSE=$(curl -sS -i -X POST "$API_URL" \
+        # Send request and capture body only
+        RESPONSE=$(curl -sS -X POST "$API_URL" \
           -H "Authorization: Bearer $API_TOKEN" \
           -H "Content-Type: application/json" \
           -d "$PAYLOAD") || true
-        echo "Full response (headers + body):"
+        echo "Response body:"
         echo "$RESPONSE"
-        AUDIT_URL=$(echo "$RESPONSE" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("audit_url",""))')
-        if [ -z "$AUDIT_URL" ]; then
-          echo "Error: audit_url not found in response"
+        # Try parsing JSON response
+        if echo "$RESPONSE" | jq . >/dev/null 2>&1; then
+          AUDIT_URL=$(echo "$RESPONSE" | jq -r .audit_url)
+        else
+          echo "Non-JSON response (likely HTML). See above."
           exit 1
         fi
+        # Ensure audit_url is present
+        if [ -z "$AUDIT_URL" ] || [ "$AUDIT_URL" = "null" ]; then
+          echo "Error: audit_url not found in JSON response"
+          exit 1
+        fi
+        # Generate redirect HTML
         echo "<html><head><meta http-equiv=\"refresh\" content=\"0; URL=$AUDIT_URL\" /></head></html>" > audit.html
     - name: Upload audit redirect HTML
       uses: actions/upload-artifact@v4
