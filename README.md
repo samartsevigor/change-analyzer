@@ -2,19 +2,6 @@
 
 This GitHub composite Action sends two commit SHAs to Savant.Chat for full diff analysis of Solidity contracts.
 
-## Repository Structure
-
-```
-my-project/
-├── action.yml                 # composite-action definition
-├── .savantscope               # default scan scope patterns (ignore/include)
-├── .savantscopedocs           # default documentation patterns and links
-├── .github/
-│   └── workflows/
-│       └── analyze.yml        # workflow file
-└── (your source code…)
-```
-
 ## Usage
 
 ### 1. Set Up API Credentials
