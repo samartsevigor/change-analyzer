@@ -1,2 +1,15 @@
-# This file contains patterns for documentation files
-# Supported Documentation Formats: .md, .pdf, .txt, .html
+# .savantdocs — patterns for documentation files (gitignore syntax)
+# Supported formats: .md, .pdf, .txt, .html
+
+# Include only description.md at repository root
+/description.md
+
+# Include all .md files anywhere in the repository
+*.md
+
+# Include all supported documentation files under docs/ directory (recursive)
+/docs/**
+
+# You can also list specific files or folders:
+# docs/guide.html
+# docs/manual.txt
