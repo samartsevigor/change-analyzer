@@ -43,7 +43,7 @@ Then pushes or PRs to these branches will trigger the analyzer.
 
 ```bash
 # Trigger workflow_dispatch
-gh workflow run analyze.yml \
+gh workflow run savant-smart-contract-analyzer.yml \
   --ref main \
   -f base_commit=<OLD_SHA> \
   -f head_commit=<NEW_SHA> \
@@ -52,10 +52,10 @@ gh workflow run analyze.yml \
   -f project_id=123
 
 # List recent runs
-gh run list --workflow analyze.yml
+gh run list --workflow savant-smart-contract-analyzer.yml
 
 # View logs of the latest run
-gh run view --workflow analyze.yml --log
+gh run view --workflow savant-smart-contract-analyzer.yml --log
 ```
 
 ### 5. REST API (curl)
