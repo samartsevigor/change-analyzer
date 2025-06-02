@@ -38,29 +38,36 @@ runs:
   steps:
     - name: Send diff request to backend
       shell: bash
-      env:
-        REPO: ${{ github.repository }}
       run: |
-        BASE_COMMIT="$INPUT_BASE_COMMIT"
-        HEAD_COMMIT="$INPUT_HEAD_COMMIT"
-        GITHUB_TOKEN="$INPUT_GITHUB_TOKEN"
-        API_TOKEN="$INPUT_API_TOKEN"
-        API_URL="$INPUT_API_URL"
-        DRY_RUN="$INPUT_DRY_RUN"
-        TIER="$INPUT_TIER"
-        PROJECT_ID="$INPUT_PROJECT_ID"
-        echo "Sending request to backend at $API_URL"
-        PAYLOAD="{\"repo\":\"$REPO\",\"base_commit\":\"$BASE_COMMIT\",\"head_commit\":\"$HEAD_COMMIT\",\"github_token\":\"$GITHUB_TOKEN\",\"api_token\":\"$API_TOKEN\",\"dry_run\":$DRY_RUN,\"tier\":\"$TIER\",\"project_id\":\"$PROJECT_ID\"}"
-        RESPONSE=$(curl -s -X POST "$API_URL" \
-          -H "Authorization: Bearer $API_TOKEN" \
+        echo "Sending request to backend at ${{ inputs.api_url }}"
+        echo "Inputs:"
+        echo "  repo: ${{ github.repository }}"
+        echo "  base_commit: ${{ inputs.base_commit }}"
+        echo "  head_commit: ${{ inputs.head_commit }}"
+        echo "  dry_run: ${{ inputs.dry_run }}"
+        echo "  tier: ${{ inputs.tier }}"
+        echo "  project_id: ${{ inputs.project_id }}"
+        PAYLOAD="{\"repo\":\"${{ github.repository }}\",\"base_commit\":\"${{ inputs.base_commit }}\",\"head_commit\":\"${{ inputs.head_commit }}\",\"github_token\":\"${{ inputs.github_token }}\",\"api_token\":\"${{ inputs.api_token }}\",\"dry_run\":${{ inputs.dry_run }},\"tier\":\"${{ inputs.tier }}\",\"project_id\":\"${{ inputs.project_id }}\"}"
+        echo "Request payload: $PAYLOAD"
+        RESPONSE=$(curl -sS -X POST "${{ inputs.api_url }}" \
+          -H "Authorization: Bearer ${{ inputs.api_token }}" \
           -H "Content-Type: application/json" \
-          -d "$PAYLOAD")
-        echo "Response: $RESPONSE"
-        AUDIT_URL=$(echo "$RESPONSE" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("audit_url",""))')
-        if [ -z "$AUDIT_URL" ]; then
-          echo "Error: audit_url not found in response"
+          -d "$PAYLOAD") || true
+        echo "Response body:"
+        echo "$RESPONSE"
+        # Try parsing JSON response
+        if echo "$RESPONSE" | jq . >/dev/null 2>&1; then
+          AUDIT_URL=$(echo "$RESPONSE" | jq -r .audit_url)
+        else
+          echo "Non-JSON response (likely HTML). See above."
           exit 1
         fi
+        # Ensure audit_url is present
+        if [ -z "$AUDIT_URL" ] || [ "$AUDIT_URL" = "null" ]; then
+          echo "Error: audit_url not found in JSON response"
+          exit 1
+        fi
+        # Generate redirect HTML
         echo "<html><head><meta http-equiv=\"refresh\" content=\"0; URL=$AUDIT_URL\" /></head></html>" > audit.html
     - name: Upload audit redirect HTML
       uses: actions/upload-artifact@v4
