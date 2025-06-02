@@ -50,10 +50,7 @@ runs:
         TIER="$INPUT_TIER"
         PROJECT_ID="$INPUT_PROJECT_ID"
         echo "Sending request to backend at $API_URL"
-        PAYLOAD=$(cat <<EOF
-{"repo":"$REPO","base_commit":"$BASE_COMMIT","head_commit":"$HEAD_COMMIT","github_token":"$GITHUB_TOKEN","api_token":"$API_TOKEN","dry_run":$DRY_RUN,"tier":"$TIER","project_id":"$PROJECT_ID"}
-EOF
-)
+        PAYLOAD="{\"repo\":\"$REPO\",\"base_commit\":\"$BASE_COMMIT\",\"head_commit\":\"$HEAD_COMMIT\",\"github_token\":\"$GITHUB_TOKEN\",\"api_token\":\"$API_TOKEN\",\"dry_run\":$DRY_RUN,\"tier\":\"$TIER\",\"project_id\":\"$PROJECT_ID\"}"
         RESPONSE=$(curl -s -X POST "$API_URL" \
           -H "Authorization: Bearer $API_TOKEN" \
           -H "Content-Type: application/json" \
@@ -64,13 +61,7 @@ EOF
           echo "Error: audit_url not found in response"
           exit 1
         fi
-        cat <<EOF > audit.html
-<html>
-  <head>
-    <meta http-equiv="refresh" content="0; URL=$AUDIT_URL" />
-  </head>
-</html>
-EOF
+        echo "<html><head><meta http-equiv=\"refresh\" content=\"0; URL=$AUDIT_URL\" /></head></html>" > audit.html
     - name: Upload audit redirect HTML
       uses: actions/upload-artifact@v4
       with:
