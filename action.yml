@@ -39,22 +39,18 @@ runs:
     - name: Send diff request to backend
       shell: bash
       run: |
-        # Repository context
-        REPO="$GITHUB_REPOSITORY"
-        BASE_COMMIT="$INPUT_BASE_COMMIT"
-        HEAD_COMMIT="$INPUT_HEAD_COMMIT"
-        GITHUB_TOKEN="$INPUT_GITHUB_TOKEN"
-        API_TOKEN="$INPUT_API_TOKEN"
-        API_URL="$INPUT_API_URL"
-        DRY_RUN="$INPUT_DRY_RUN"
-        TIER="$INPUT_TIER"
-        PROJECT_ID="$INPUT_PROJECT_ID"
-        echo "Sending request to backend at $API_URL"
-        PAYLOAD="{\"repo\":\"$REPO\",\"base_commit\":\"$BASE_COMMIT\",\"head_commit\":\"$HEAD_COMMIT\",\"github_token\":\"$GITHUB_TOKEN\",\"api_token\":\"$API_TOKEN\",\"dry_run\":$DRY_RUN,\"tier\":\"$TIER\",\"project_id\":\"$PROJECT_ID\"}"
+        echo "Sending request to backend at ${{ inputs.api_url }}"
+        echo "Inputs:"
+        echo "  repo: ${{ github.repository }}"
+        echo "  base_commit: ${{ inputs.base_commit }}"
+        echo "  head_commit: ${{ inputs.head_commit }}"
+        echo "  dry_run: ${{ inputs.dry_run }}"
+        echo "  tier: ${{ inputs.tier }}"
+        echo "  project_id: ${{ inputs.project_id }}"
+        PAYLOAD="{\"repo\":\"${{ github.repository }}\",\"base_commit\":\"${{ inputs.base_commit }}\",\"head_commit\":\"${{ inputs.head_commit }}\",\"github_token\":\"${{ inputs.github_token }}\",\"api_token\":\"${{ inputs.api_token }}\",\"dry_run\":${{ inputs.dry_run }},\"tier\":\"${{ inputs.tier }}\",\"project_id\":\"${{ inputs.project_id }}\"}"
         echo "Request payload: $PAYLOAD"
-        # Send request and capture body only
-        RESPONSE=$(curl -sS -X POST "$API_URL" \
-          -H "Authorization: Bearer $API_TOKEN" \
+        RESPONSE=$(curl -sS -X POST "${{ inputs.api_url }}" \
+          -H "Authorization: Bearer ${{ inputs.api_token }}" \
           -H "Content-Type: application/json" \
           -d "$PAYLOAD") || true
         echo "Response body:"
