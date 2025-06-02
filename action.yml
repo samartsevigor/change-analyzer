@@ -38,9 +38,9 @@ runs:
   steps:
     - name: Send diff request to backend
       shell: bash
-      env:
-        REPO: ${{ github.repository }}
       run: |
+        # Repository context
+        REPO="$GITHUB_REPOSITORY"
         BASE_COMMIT="$INPUT_BASE_COMMIT"
         HEAD_COMMIT="$INPUT_HEAD_COMMIT"
         GITHUB_TOKEN="$INPUT_GITHUB_TOKEN"
