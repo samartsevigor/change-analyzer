@@ -1,4 +1,4 @@
-name: 'Smart Contract Change Analyzer'
+name: 'Savant Smart Contract Analyzer'
 description: 'Analyzes changes in Solidity contracts between commits'
 branding:
   icon: 'search'
@@ -14,17 +14,13 @@ inputs:
     description: 'GitHub token for repository access'
     required: false
     default: ${{ github.token }}
-  scopeignore_path:
-    description: 'Path to .savantignore file in repository (relative to repo root)'
-    required: false
-    default: '.savantignore'
   api_token:
     description: 'API token for the audit service. Get it from https://savant.chat (Profile -> Settings -> API Keys)'
-    required: false
+    required: true
   api_url:
     description: 'URL for the audit service API endpoint'
     required: false
-    default: 'https://savant.chat/api/v1'
+    default: 'https://savant.chat/api/v1/ci-cd/requests'
   dry_run:
     description: 'Whether to perform a dry run (do not create real audit)'
     required: false
@@ -36,22 +32,47 @@ inputs:
   project_id:
     description: 'Documentation project ID'
     required: false
-outputs:
-  changes_file:
-    description: 'Path to the JSON file with analyzed changes'
-    value: 'changed_declarations.json'
-  audit_response:
-    description: 'Response from the audit service (if enabled)'
-    value: ${{ steps.analyze.outputs.audit_response }}
+
 runs:
-  using: 'docker'
-  image: 'Dockerfile'
-  args:
-    - ${{ inputs.base_commit }}
-    - ${{ inputs.head_commit }}
-    - ${{ inputs.scopeignore_path }}
-    - ${{ inputs.api_token }}
-    - ${{ inputs.api_url }}
-    - ${{ inputs.dry_run }}
-    - ${{ inputs.tier }}
-    - ${{ inputs.project_id }} 
+  using: 'composite'
+  steps:
+    - name: Send diff request to backend
+      shell: bash
+      env:
+        REPO: ${{ github.repository }}
+      run: |
+        BASE_COMMIT="$INPUT_BASE_COMMIT"
+        HEAD_COMMIT="$INPUT_HEAD_COMMIT"
+        GITHUB_TOKEN="$INPUT_GITHUB_TOKEN"
+        API_TOKEN="$INPUT_API_TOKEN"
+        API_URL="$INPUT_API_URL"
+        DRY_RUN="$INPUT_DRY_RUN"
+        TIER="$INPUT_TIER"
+        PROJECT_ID="$INPUT_PROJECT_ID"
+        echo "Sending request to backend at $API_URL"
+        PAYLOAD=$(cat <<EOF
+{"repo":"$REPO","base_commit":"$BASE_COMMIT","head_commit":"$HEAD_COMMIT","github_token":"$GITHUB_TOKEN","api_token":"$API_TOKEN","dry_run":$DRY_RUN,"tier":"$TIER","project_id":"$PROJECT_ID"}
+EOF
+)
+        RESPONSE=$(curl -s -X POST "$API_URL" \
+          -H "Authorization: Bearer $API_TOKEN" \
+          -H "Content-Type: application/json" \
+          -d "$PAYLOAD")
+        echo "Response: $RESPONSE"
+        AUDIT_URL=$(echo "$RESPONSE" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("audit_url",""))')
+        if [ -z "$AUDIT_URL" ]; then
+          echo "Error: audit_url not found in response"
+          exit 1
+        fi
+        cat <<EOF > audit.html
+<html>
+  <head>
+    <meta http-equiv="refresh" content="0; URL=$AUDIT_URL" />
+  </head>
+</html>
+EOF
+    - name: Upload audit redirect HTML
+      uses: actions/upload-artifact@v4
+      with:
+        name: audit-redirect
+        path: audit.html 
