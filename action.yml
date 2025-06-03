@@ -1,5 +1,5 @@
 name: 'Savant Smart Contract Analyzer'
-description: 'Analyzes changes in Solidity contracts between commits'
+description: 'Analyzes changes in Solidity contracts between commits and creates an audit request in Savant.Chat'
 branding:
   icon: 'search'
   color: 'blue'
@@ -33,10 +33,10 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    - name: Send diff request to backend
+    - name: Send request to Savant.Chat
       shell: bash
       run: |
-        echo "Sending request to backend at ${{ inputs.api_url }}"
+        echo "Sending request to Savant.Chat at ${{ inputs.api_url }}"
         echo "Inputs:"
         echo "  repo: ${{ github.repository }}"
         echo "  base_commit: ${{ inputs.base_commit }}"
@@ -49,8 +49,8 @@ runs:
           -H "Authorization: Bearer ${{ inputs.api_token }}" \
           -H "Content-Type: application/json" \
           -d "$PAYLOAD") || true
-        echo "Response body:"
-        echo "$RESPONSE"
+        echo "Response body (formatted JSON):"
+        echo "$RESPONSE" | jq .
         # Try parsing JSON response
         if echo "$RESPONSE" | jq . >/dev/null 2>&1; then
           AUDIT_URL=$(echo "$RESPONSE" | jq -r .requestLink)

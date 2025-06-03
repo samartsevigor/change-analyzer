@@ -46,8 +46,8 @@ jobs:
         with:
           fetch-depth: 0
       
-      - name: Analyze Solidity Changes & Send to Savant.Chat
-        uses: samartsevigor/contract-change-analyzer-test@v3.8
+      - name: Create Savant.Chat audit request
+        uses: samartsevigor/contract-change-analyzer-test@v3.9
         with:
           base_commit: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.base_commit || github.event_name == 'push' && github.event.before || github.event.pull_request.base.sha }}
           head_commit: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.head_commit || github.event_name == 'push' && github.sha || github.event.pull_request.head.sha }}
