@@ -119,8 +119,10 @@ contracts/**/*.sol
 README.md
 
 # Default exclusions (ignore vendor or generated docs):
-!docs/vendor/**
-!docs/generated/**
+!node_modules/**/*
+!lib/**/*
+!remappings.txt
+!LICENSE.md
 
 # Example: add external link
 https://example.com/docs/overview.html

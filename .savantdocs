@@ -9,15 +9,16 @@
 #
 # Default documentation patterns:
 docs/**/*.md
+docs/**/*.mdx
 docs/**/*.txt
 docs/**/*.pdf
 docs/**/*.html
-contracts/**/*.sol
-README.md
 #
 # Default exclusions (ignore vendor or generated docs):
-!docs/vendor/**
-!docs/generated/**
+!node_modules/**/*
+!lib/**/*
+!remappings.txt
+!LICENSE.md
 #
 # Usage examples:
 # 1) To add an external documentation link:

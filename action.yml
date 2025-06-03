@@ -49,8 +49,8 @@ runs:
           -H "Authorization: Bearer ${{ inputs.api_token }}" \
           -H "Content-Type: application/json" \
           -d "$PAYLOAD") || true
-        echo "Response body (formatted JSON):"
-        echo "$RESPONSE" | jq .
+        echo "Response body (masked JSON):"
+        echo "$RESPONSE" | jq '(.requestLink) |= "***"'
         # Try parsing JSON response
         if echo "$RESPONSE" | jq . >/dev/null 2>&1; then
           AUDIT_URL=$(echo "$RESPONSE" | jq -r .requestLink)
@@ -70,13 +70,3 @@ runs:
       with:
         name: audit-redirect
         path: audit.html
-    - name: Print audit URL
-      shell: bash
-      run: |
-        # Extract the URL from audit.html
-        audit_url=$(sed -n 's/.*URL=\([^" ]*\).*/\1/p' audit.html)
-        if [ -n "$audit_url" ]; then
-          echo "🔗 Audit URL: $audit_url"
-        else
-          echo "⚠️ Audit URL not found in audit.html"
-        fi 
