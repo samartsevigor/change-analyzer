@@ -69,4 +69,14 @@ runs:
       uses: actions/upload-artifact@v4
       with:
         name: audit-redirect
-        path: audit.html 
+        path: audit.html
+    - name: Print audit URL
+      shell: bash
+      run: |
+        # Extract the URL from audit.html
+        audit_url=$(sed -n 's/.*URL=\([^" ]*\).*/\1/p' audit.html)
+        if [ -n "$audit_url" ]; then
+          echo "🔗 Audit URL: $audit_url"
+        else
+          echo "⚠️ Audit URL not found in audit.html"
+        fi 

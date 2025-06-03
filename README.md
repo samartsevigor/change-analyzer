@@ -47,7 +47,7 @@ gh workflow run savant-smart-contract-analyzer.yml \
   -f base_commit=<OLD_SHA> \
   -f head_commit=<NEW_SHA> \
   -f dry_run=false \
-  -f tier=advanced
+  -f tier=lite
 
 # List recent runs
 gh run list --workflow savant-smart-contract-analyzer.yml
