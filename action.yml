@@ -57,14 +57,14 @@ runs:
         echo "$RESPONSE"
         # Try parsing JSON response
         if echo "$RESPONSE" | jq . >/dev/null 2>&1; then
-          AUDIT_URL=$(echo "$RESPONSE" | jq -r .audit_url)
+          AUDIT_URL=$(echo "$RESPONSE" | jq -r .requestLink)
         else
           echo "Non-JSON response (likely HTML). See above."
           exit 1
         fi
-        # Ensure audit_url is present
+        # Ensure requestLink is present
         if [ -z "$AUDIT_URL" ] || [ "$AUDIT_URL" = "null" ]; then
-          echo "Error: audit_url not found in JSON response"
+          echo "Error: requestLink not found in JSON response"
           exit 1
         fi
         # Generate redirect HTML
