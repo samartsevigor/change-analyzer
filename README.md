@@ -53,7 +53,7 @@ gh workflow run savant-smart-contract-analyzer.yml \
 gh run list --workflow savant-smart-contract-analyzer.yml
 
 # View logs of the latest run
-gh run view --workflow savant-smart-contract-analyzer.yml --log
+gh run view <run-id> --log
 ```
 
 ### 5. REST API (curl)
