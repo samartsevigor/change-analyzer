@@ -108,7 +108,7 @@ Place custom overrides below defaults, for example:
 src/utils/**/*.sol
 ```
 
-## .savantscopedocs
+## .savantdocs
 
 Defines which documentation files or external links to include/exclude as part of the audit. Supports `.md`, `.txt`, `.pdf`, `.html`, and Solidity files, as well as HTTP(S) URLs.
 

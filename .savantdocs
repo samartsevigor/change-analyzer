@@ -1,4 +1,4 @@
-# .savantscopedocs — file and directory patterns and documentation links
+# .savantdocs — file and directory patterns and documentation links
 #
 # Syntax:
 #   - Blank lines and lines starting with '#' are comments and ignored.
