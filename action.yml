@@ -29,9 +29,6 @@ inputs:
     description: 'Tier'
     required: false
     default: 'advanced'
-  project_id:
-    description: 'Documentation project ID'
-    required: false
 
 runs:
   using: 'composite'
@@ -46,8 +43,7 @@ runs:
         echo "  head_commit: ${{ inputs.head_commit }}"
         echo "  dry_run: ${{ inputs.dry_run }}"
         echo "  tier: ${{ inputs.tier }}"
-        echo "  project_id: ${{ inputs.project_id }}"
-        PAYLOAD="{\"repo\":\"${{ github.repository }}\",\"base_commit\":\"${{ inputs.base_commit }}\",\"head_commit\":\"${{ inputs.head_commit }}\",\"github_token\":\"${{ inputs.github_token }}\",\"api_token\":\"${{ inputs.api_token }}\",\"dry_run\":${{ inputs.dry_run }},\"tier\":\"${{ inputs.tier }}\",\"project_id\":\"${{ inputs.project_id }}\"}"
+        PAYLOAD="{\"repo\":\"${{ github.repository }}\",\"base_commit\":\"${{ inputs.base_commit }}\",\"head_commit\":\"${{ inputs.head_commit }}\",\"github_token\":\"${{ inputs.github_token }}\",\"api_token\":\"${{ inputs.api_token }}\",\"dry_run\":${{ inputs.dry_run }},\"tier\":\"${{ inputs.tier }}\"}"
         echo "Request payload: $PAYLOAD"
         RESPONSE=$(curl -sS -X POST "${{ inputs.api_url }}" \
           -H "Authorization: Bearer ${{ inputs.api_token }}" \

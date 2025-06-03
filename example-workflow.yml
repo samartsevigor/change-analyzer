@@ -24,10 +24,6 @@ on:
           - pro
           - advanced
           - lite
-      project_id:
-        description: 'Documentation project ID'
-        required: false
-        default: ''
 
   # Automatically trigger on pull requests
   # pull_request:
@@ -59,4 +55,3 @@ jobs:
           api_url: 'https://dev.savant.chat/api/v1/ci-cd/requests'
           dry_run: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run || 'false' }}
           tier: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tier || 'advanced' }}
-          project_id: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.project_id || '' }}

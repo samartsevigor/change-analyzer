@@ -21,8 +21,7 @@ This GitHub composite Action sends two commit SHAs to Savant.Chat for full diff 
    - **base_commit**: SHA to compare from
    - **head_commit**: SHA to compare to (defaults to `HEAD`)
    - **dry_run**: `true` or `false`
-   - **tier**: `advanced` or `lite`
-   - **project_id**: your project ID (optional)
+   - **tier**: `pro`, `advanced` or `lite`
 4. Click **Run workflow**.
 
 ### 3. Automatic Triggers
@@ -48,8 +47,7 @@ gh workflow run savant-smart-contract-analyzer.yml \
   -f base_commit=<OLD_SHA> \
   -f head_commit=<NEW_SHA> \
   -f dry_run=false \
-  -f tier=advanced \
-  -f project_id=123
+  -f tier=advanced
 
 # List recent runs
 gh run list --workflow savant-smart-contract-analyzer.yml
@@ -72,8 +70,7 @@ curl -X POST \
       "base_commit": "<OLD_SHA>",
       "head_commit": "<NEW_SHA>",
       "dry_run": "false",
-      "tier": "advanced",
-      "project_id": "123"
+      "tier": "advanced"
     }
   }'
 ```
@@ -145,7 +142,6 @@ https://example.com/docs/overview.html
 | `api_url` | URL for the audit service API | No | `https://savant.chat/api/v1` |
 | `dry_run` | Return estimates without creating request | No | `false` |
 | `tier` | Tier | No | `advanced` |
-| `project_id` | Documentation project ID | No | - |
 
 ## License
 
