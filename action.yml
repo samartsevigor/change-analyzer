@@ -49,8 +49,8 @@ runs:
           -H "Authorization: Bearer ${{ inputs.api_token }}" \
           -H "Content-Type: application/json" \
           -d "$PAYLOAD") || true
-        echo "Response body (masked JSON):"
-        echo "$RESPONSE" | jq '(.requestLink) |= "***"'
+        echo "Response body:"
+        echo "$RESPONSE" | jq '(.requestLink, .requestId) |= "***"'
         # Try parsing JSON response
         if echo "$RESPONSE" | jq . >/dev/null 2>&1; then
           AUDIT_URL=$(echo "$RESPONSE" | jq -r .requestLink)
