@@ -112,10 +112,10 @@ Defines which documentation files or external links to include/exclude as part o
 ```text
 # Default documentation patterns:
 docs/**/*.md
+docs/**/*.mdx
 docs/**/*.txt
 docs/**/*.pdf
 docs/**/*.html
-contracts/**/*.sol
 
 # Default exclusions (ignore vendor or generated docs):
 !node_modules/**/*
