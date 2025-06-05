@@ -116,7 +116,6 @@ docs/**/*.txt
 docs/**/*.pdf
 docs/**/*.html
 contracts/**/*.sol
-README.md
 
 # Default exclusions (ignore vendor or generated docs):
 !node_modules/**/*
@@ -140,8 +139,8 @@ https://example.com/docs/overview.html
 | `base_commit` | Base commit SHA for comparison | Yes | - |
 | `head_commit` | Head commit SHA for comparison | Yes | - |
 | `github_token`| GitHub token for repository access | No | `${{ github.token }}` |
-| `api_token` | API token for the audit service | No | - |
-| `api_url` | URL for the audit service API | No | `https://savant.chat/api/v1` |
+| `api_token` | API token for the audit service | Yes | - |
+| `api_url` | URL for the audit service API | No | `https://savant.chat/api/v1/ci-cd/requests` |
 | `dry_run` | Return estimates without creating request | No | `false` |
 | `tier` | Tier | No | `advanced` |
 
